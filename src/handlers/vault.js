@@ -2,9 +2,9 @@ const { TokenWithdrawn, TokenDeposited, UserPosition } = require("../db");
 const { tronWeb } = require("../utils");
 
 
-async function handleTokenDeposited(data, argument){
+async function handleTokenDeposited(data, argument) {
 
-    try{
+    try {
 
         const isDuplicateTxn = await TokenDeposited.findOne({
             txnId: argument.txnId,
@@ -12,7 +12,7 @@ async function handleTokenDeposited(data, argument){
             blockTimestamp: argument.blockTimestamp
         });
 
-        if(isDuplicateTxn){
+        if (isDuplicateTxn) {
             return
         }
 
@@ -22,45 +22,46 @@ async function handleTokenDeposited(data, argument){
 
         TokenDeposited.create(argument);
 
-        
-        let isUserPositionExist = await UserPosition.findOne({id : tronWeb.address.fromHex(data[0]), token : tronWeb.address.fromHex(data[1]) });
 
-        if(isUserPositionExist){
+        let isUserPositionExist = await UserPosition.findOne({ id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) });
+
+        if (isUserPositionExist) {
             let currentBalance = Number(isUserPositionExist.balance) + data[2];
-             UserPosition.updateOne(
-                {id : tronWeb.address.fromHex(data[0]), token : tronWeb.address.fromHex(data[1])},
-                {$set :{balance : currentBalance}}
+            await UserPosition.findOneAndUpdate(
+                { id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) },
+                { $set: { balance: currentBalance } }
             )
-        }else{
+        } else {
             let temp = {
-                id : tronWeb.address.fromHex(data[0]),
-                token : tronWeb.address.fromHex(data[1]),
-                balance : data[2]
+                id: tronWeb.address.fromHex(data[0]),
+                token: tronWeb.address.fromHex(data[1]),
+                balance: data[2],
+                inOrderBalance : '0'
             };
 
             UserPosition.create(temp)
         }
 
-        console.log("Token Deposited", tronWeb.address.fromHex(data[1]), data[2] );
+        console.log("Token Deposited", tronWeb.address.fromHex(data[0]), data[2],  tronWeb.address.fromHex(data[1]));
     }
-    catch(error){
+    catch (error) {
         console.log("Error @ handleTokenDeposited", error)
     }
 
 };
 
 
-async function handleTokenWithdrawn(data, argument){
+async function handleTokenWithdrawn(data, argument) {
 
-    try{
-        
+    try {
+
         const isDuplicateTxn = await TokenWithdrawn.findOne({
             txnId: argument.txnId,
             blockNumber: argument.blockNumber,
             blockTimestamp: argument.blockTimestamp
         });
 
-        if(isDuplicateTxn){
+        if (isDuplicateTxn) {
             return
         }
 
@@ -69,33 +70,34 @@ async function handleTokenWithdrawn(data, argument){
         argument.amount = data[2];
 
         TokenWithdrawn.create(argument);
-        console.log("Token Withrawn")
+       
 
-        let isUserPositionExist = await UserPosition.findOne({id : tronWeb.address.fromHex(data[0]), token : tronWeb.address.fromHex(data[1]) });
+        let isUserPositionExist = await UserPosition.findOne({ id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) });
 
-        if(isUserPositionExist){
+        if (isUserPositionExist) {
             let currentBalance = Number(isUserPositionExist.balance) - data[2];
-             UserPosition.updateOne(
-                {id : tronWeb.address.fromHex(data[0]), token : tronWeb.address.fromHex(data[1])},
-                {$set :{balance : currentBalance}}
+            await UserPosition.findOneAndUpdate(
+                { id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) },
+                { $set: { balance: currentBalance } }
             )
-        }else{
+        } else {
             let temp = {
-                id : tronWeb.address.fromHex(data[0]),
-                token : tronWeb.address.fromHex(data[1]),
-                balance : -data[2]
+                id: tronWeb.address.fromHex(data[0]),
+                token: tronWeb.address.fromHex(data[1]),
+                balance: -data[2],
+                inOrderBalance : '0'
             };
 
             UserPosition.create(temp)
         }
-
+        console.log("Token Withrawn",  tronWeb.address.fromHex(data[0]), data[2],  tronWeb.address.fromHex(data[1]))
 
     }
-    catch(error){
+    catch (error) {
         console.log("Error @ handleTokenDeposited", error)
     }
 
 };
 
 
-module.exports = {handleTokenDeposited, handleTokenWithdrawn};
+module.exports = { handleTokenDeposited, handleTokenWithdrawn };

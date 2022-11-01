@@ -73,3 +73,30 @@
     event: 'PairCreated(bytes32 pairId, address token0, address token1, uint256 exchangeRateDecimals, uint256 minToken0Order)',
     transaction_id: '48ab0c75a1f66baa2f309b55b26856846d381f7482926a71256b4b2339642344'
   },
+
+  /////////////////////////////////////////////////////////////////////////
+
+  OrderExecuted {
+  block_number: 31194630,
+  block_timestamp: 1667283627000,
+  caller_contract_address: 'TRfPLnVm7tsz2gpv4SeTJVTrtSkw4zwPT8',
+  contract_address: 'TRfPLnVm7tsz2gpv4SeTJVTrtSkw4zwPT8',
+  event_index: 0,
+  event_name: 'OrderExecuted',
+  result: {
+    '0': '29ec209e150fa8dd1f30a23fba53bbd0581741515c0814319ce2434b7770aafe',
+    '1': '0x13d122cdca07de3bf98758f513fc4d1e44f3a4f5',
+    '2': '20000000000000000000',
+    orderId: '29ec209e150fa8dd1f30a23fba53bbd0581741515c0814319ce2434b7770aafe',
+    fillAmount: '20000000000000000000',
+    taker: '0x13d122cdca07de3bf98758f513fc4d1e44f3a4f5'
+  },
+  result_type: { orderId: 'bytes32', fillAmount: 'uint256', taker: 'address' },
+  event: 'OrderExecuted(bytes32 orderId, address taker, uint256 fillAmount)',
+  transaction_id: 'ce945c8dac14a0fb7130b79d6dc517f96839b32543cd9a975ccca65a02c70771',
+  args: [
+    '29ec209e150fa8dd1f30a23fba53bbd0581741515c0814319ce2434b7770aafe',
+    '0x13d122cdca07de3bf98758f513fc4d1e44f3a4f5',
+    '20000000000000000000'
+  ]
+}

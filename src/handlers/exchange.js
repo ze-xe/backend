@@ -71,17 +71,17 @@ async function handleOrderCreated(data, argument) {
 
             let token0 = findToken0.token0;
 
-            let findUserPosition = await UserPosition.findOne({ id : maker, token: token0 });
+            let findUserPosition = await UserPosition.findOne({ id: maker, token: token0 });
 
             let _id = findUserPosition._id.toString();
 
-            let currentInOrderBalance = Number(findUserPosition.InOrderBalance ?? 0) + Number(amount);
+            let currentInOrderBalance = Number(findUserPosition.inOrderBalance ?? 0) + Number(amount);
 
             let currentBalance = Number(findUserPosition.balance) - Number(amount);
 
-            await UserPosition.updateOne(
+            await UserPosition.findOneAndUpdate(
                 { _id: _id },
-                { $set: { InOrderBalance: currentInOrderBalance, balance: currentBalance } }
+                { $set: { inOrderBalance: currentInOrderBalance, balance: currentBalance } }
             );
 
         }
@@ -95,15 +95,15 @@ async function handleOrderCreated(data, argument) {
 
             let token1Amount = (Number(amount) * (exchangeRate)) / (10 ** Number(findToken1.exchangeRateDecimals));
 
-            let currentInOrderBalance = Number(findUserPosition.InOrderBalance ?? 0) + token1Amount;
+            let currentInOrderBalance = Number(findUserPosition.inOrderBalance ?? 0) + token1Amount;
 
             let _id = findUserPosition._id.toString();
 
             let currentBalance = Number(findUserPosition.balance) - token1Amount;
 
-            await UserPosition.updateOne(
+            await UserPosition.findOneAndUpdate(
                 { _id: _id },
-                { $set: { InOrderBalance: currentInOrderBalance, balance: currentBalance } }
+                { $set: { inOrderBalance: currentInOrderBalance, balance: currentBalance } }
             )
         }
 
@@ -130,13 +130,186 @@ async function handleOrderExecuted(data, argument) {
             return
         }
 
-        argument.id = data[0];
-        argument.taker = tronWeb.address.fromHex(data[1]);
-        argument.fillAmount = data[2];
+        let id = data[0];
+        let taker = tronWeb.address.fromHex(data[1]);
+        let fillAmount = data[2];
+        argument.id = id;
+        argument.taker = taker;
+        argument.fillAmount = fillAmount;
 
         OrderExecuted.create(argument);
 
-        console.log("Order Executed", tronWeb.address.fromHex(data[1]), data[2])
+        let getOrderDetails = await OrderCreated.findOne({ id: id });
+
+        if (getOrderDetails.orderType == '0') {
+            // for maker
+            let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
+
+            let token0 = getPairDetails.token0;
+
+            let token1 = getPairDetails.token1;
+
+            let getUserPosition0 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token0 });
+
+            let currentInOrderBalance0 = Number(getUserPosition0.inOrderBalance ?? 0) - Number(fillAmount);
+
+            await UserPosition.findOneAndUpdate(
+                { id: getOrderDetails.maker, token: token0 },
+                { $set: { inOrderBalance: currentInOrderBalance0 } }
+            );
+
+            let getUserPosition1 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token1 });
+
+            if (getUserPosition1) {
+                let currentBalance1 = Number(getUserPosition1.balance) + ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));
+
+                await UserPosition.findOneAndUpdate(
+                    { id: getOrderDetails.maker, token: token1 },
+                    { $set: { balance: currentBalance1 } }
+                )
+            }
+            else {
+                let temp = {
+                    id: getOrderDetails.maker,
+                    token: token1,
+                    balance: ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals)),
+                    inOrderBalance: "0"
+                }
+
+                UserPosition.create(temp)
+            }
+            // for taker
+
+            let getUserPositionTaker0 = await UserPosition.findOne({ id: taker, token: token0 });
+
+            if (getUserPositionTaker0) {
+
+                let currentBalanceTaker0 = Number(getUserPositionTaker0.balance) + Number(fillAmount);
+
+                await UserPosition.findOneAndUpdate(
+                    { id: taker, token: token0 },
+                    { $set: { balance: currentBalanceTaker0 } }
+                );
+
+            }
+            else {
+
+                let temp = {
+                    id: taker,
+                    token: token0,
+                    balance: fillAmount,
+                    inOrderBalance : '0'
+                }
+                UserPosition.create(temp)
+            }
+
+            let getUserPositionTaker1 = await UserPosition.findOne({ id: taker, token: token1 });
+
+            let currentBalanceTaker1 = Number(getUserPositionTaker1.balance ?? 0) - ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));
+
+            await UserPosition.findOneAndUpdate(
+                { id: taker, token: token1 },
+                { $set: { balance: currentBalanceTaker1 } }
+            )
+
+            let currentFillAmount = Number(getOrderDetails.amount) - Number(fillAmount);
+
+            if (currentFillAmount == '0') {
+               await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
+            }
+            else {
+                await OrderCreated.findOneAndUpdate(
+                    { _id: getOrderDetails._id.toString() },
+                    { amount: currentFillAmount }
+                )
+            }
+
+        }
+        else if (getOrderDetails.orderType == '1') {
+            // for maker
+            let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
+
+            let token0 = getPairDetails.token0;
+
+            let token1 = getPairDetails.token1;
+
+            let getUserPosition0 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token0 });
+
+            if (getUserPosition0) {
+
+                let currentBalance0 = Number(getUserPosition0.balance) + Number(fillAmount);
+
+                await UserPosition.findOneAndUpdate(
+                    { id: getOrderDetails.maker, token: token0 },
+                    { $set: { balance: currentBalance0 } }
+                );
+            }
+            else {
+                let temp = {
+                    id: getOrderDetails.maker,
+                    token: token0,
+                    balance: fillAmount
+                }
+
+                UserPosition.create(temp)
+            }
+
+            let getUserPosition1 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token1 });
+
+            let currentBalance1 = Number(getUserPosition1.balance ?? 0) - ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));
+
+            await UserPosition.findOneAndUpdate(
+                { id: getOrderDetails.maker, token: token1 },
+                { $set: { balance: currentBalance1 } }
+            )
+
+            // for taker
+            let getUserPositionTaker0 = await UserPosition.findOne({ id: taker, token: token0 });
+
+            let currentBalanceTaker0 = Number(getUserPositionTaker0.balance ?? 0) - Number(fillAmount);
+
+            await UserPosition.findOneAndUpdate(
+                { id: taker, token: token0 },
+                { $set: { balance: currentBalanceTaker0 } }
+            );
+
+            let getUserPositionTaker1 = await UserPosition.findOne({ id: taker, token: token1 });
+
+            if (getUserPositionTaker1) {
+
+                let currentBalanceTaker1 = Number(getUserPositionTaker1.balance) + ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));
+
+                await UserPosition.findOneAndUpdate(
+                    { id: taker, token: token1 },
+                    { $set: { balance: currentBalanceTaker1 } }
+                )
+            }
+            else {
+                let temp = {
+                    id: taker,
+                    token: token1,
+                    balance: ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals))
+                }
+
+                UserPosition.create(temp)
+            }
+
+            let currentFillAmount = Number(getOrderDetails.amount) - Number(fillAmount);
+
+            if (currentFillAmount == '0') {
+               await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
+            }
+            else {
+                await OrderCreated.findOneAndUpdate(
+                    { _id: getOrderDetails._id.toString() },
+                    { amount: currentFillAmount }
+                )
+            }
+
+
+        }
+
+        console.log("Order Executed", taker, fillAmount, id)
 
     }
     catch (error) {
