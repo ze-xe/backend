@@ -24,6 +24,7 @@ async function handlePairCreated(data, argument) {
         argument.minToken0Order = data[4];
         await handleToken(tronWeb.address.fromHex(data[1]));
         await handleToken(tronWeb.address.fromHex(data[2]));
+        argument.exchangeRate = 0;
         PairCreated.create(argument);
         console.log("Pair Created", tronWeb.address.fromHex(data[1]), tronWeb.address.fromHex(data[2]))
 
@@ -141,10 +142,16 @@ async function handleOrderExecuted(data, argument) {
 
         let getOrderDetails = await OrderCreated.findOne({ id: id });
 
+        let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
+
+        await PairCreated.findOneAndUpdate(
+            {_id : getPairDetails._id.toString()},
+            {$set : {exchangeRate : getOrderDetails.exchangeRate}}
+        )
+
         if (getOrderDetails.orderType == '0') {
             // for maker
-            let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
-
+          
             let token0 = getPairDetails.token0;
 
             let token1 = getPairDetails.token1;
@@ -227,8 +234,6 @@ async function handleOrderExecuted(data, argument) {
         }
         else if (getOrderDetails.orderType == '1') {
             // for maker
-            let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
-
             let token0 = getPairDetails.token0;
 
             let token1 = getPairDetails.token1;
