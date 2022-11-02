@@ -170,15 +170,48 @@ async function fetchOrders(req, res) {
 
         let data;
 
+        let sellOrders  = [];
+
+        let sellEntries = Object.entries(mapSell);
+
+        for(let i in sellEntries){
+            let temp = {
+                exchangeRate : sellEntries[i][0],
+                amount : sellEntries[i][1]
+            }
+            sellOrders.push(temp)
+        }
+        
+        let buyOrders  = [];
+
+        let buyEntries = Object.entries(mapBuy);
+
+        for(let i in buyEntries){
+            let temp = {
+                exchangeRate : buyEntries[i][0],
+                amount : buyEntries[i][1]
+            }
+            buyOrders.push(temp)
+        }
+        
+
+
+    //    console.log(Object.entries(mapSell))
+
         if (getOrderDetails.length > 0) {
             data = {
                 pair: getOrderDetails[0].pair,
                 decimals: getOrderDetails[0].decimals[0],
-                sellOrders: mapSell,
-                buyOrders: mapBuy
+                sellOrders: sellOrders,
+                buyOrders: buyOrders
             }
         } else {
-            data = []
+            data = {
+                pair: isPairIdExist.id,
+                decimals: isPairIdExist.exchangeRateDecimals,
+                sellOrders: [],
+                buyOrders: []
+            }
         }
 
         return res.status(200).send({ status: true, data: data });
