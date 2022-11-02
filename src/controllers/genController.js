@@ -18,8 +18,8 @@ async function getAllPairDetails(req, res) {
                 id: allPairs[i].id,
                 exchangeRate: allPairs[i].exchangeRate
             }
-            let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id : 1}).lean();
-            let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id : 1}).lean();
+            let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
+            let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             temp.tokens = [token0, token1];
             // temp.token1 = token1
             data.push(temp)
@@ -38,7 +38,7 @@ async function getAllPairDetails(req, res) {
 async function _getAllPairDetails(req, res) {
 
     try {
-        
+
         let getPairDetails = await PairCreated.aggregate(
             [
                 {
@@ -88,12 +88,12 @@ async function _getAllPairDetails(req, res) {
 
             ]
         )
-       return res.status(200).send({ status: true, data: getPairDetails });
-        
+        return res.status(200).send({ status: true, data: getPairDetails });
+
     }
     catch (error) {
         console.log("Error @ getAllPairDetails", error);
-      return  res.status(500).send({ status: false, error: error.message });
+        return res.status(500).send({ status: false, error: error.message });
     }
 };
 
@@ -104,14 +104,14 @@ async function fetchOrders(req, res) {
 
         if (!pairId) {
 
-          return  res.status(400).send({ status: false, message: "Please provide pairId" });
+            return res.status(400).send({ status: false, message: "Please provide pairId" });
 
         };
 
         const isPairIdExist = await PairCreated.findOne({ id: pairId });
 
         if (!isPairIdExist) {
-          return  res.status(404).send({ status: false, message: "Please provide valid pairId" });
+            return res.status(404).send({ status: false, message: "Please provide valid pairId" });
         }
 
         let getOrderDetails = await OrderCreated.aggregate(
@@ -135,53 +135,75 @@ async function fetchOrders(req, res) {
                         pair: 1,
                         amount: 1,
                         exchangeRate: 1,
-                        decimals: "$pairDetails.exchangeRateDecimals"
+                        decimals: "$pairDetails.exchangeRateDecimals",
+                        orderType: 1
                     }
                 }
 
             ]
         );
-        let map = {}
+
+        let mapSell = {};
+        let mapBuy = {}
         for (let i in getOrderDetails) {
 
-            if (!map[`${getOrderDetails[i].exchangeRate}`]) {
+            if (!mapSell[`${getOrderDetails[i].exchangeRate}`] && getOrderDetails[i].orderType == "0") {
 
-                map[`${getOrderDetails[i].exchangeRate}`] = getOrderDetails[i].amount;
+                mapSell[`${getOrderDetails[i].exchangeRate}`] = getOrderDetails[i].amount;
 
             }
-            else {
-                map[`${getOrderDetails[i].exchangeRate}`] = `${Number(map[`${getOrderDetails[i].exchangeRate}`]) + Number(getOrderDetails[i].amount)}`;
+            else if (mapSell[`${getOrderDetails[i].exchangeRate}`] && getOrderDetails[i].orderType == "0") {
+
+                mapSell[`${getOrderDetails[i].exchangeRate}`] = `${Number(mapSell[`${getOrderDetails[i].exchangeRate}`]) + Number(getOrderDetails[i].amount)}`;
+            }
+            else if (!mapBuy[`${getOrderDetails[i].exchangeRate}`] && getOrderDetails[i].orderType == "1") {
+
+                mapBuy[`${getOrderDetails[i].exchangeRate}`] = getOrderDetails[i].amount;
+            }
+            else if (mapBuy[`${getOrderDetails[i].exchangeRate}`] && getOrderDetails[i].orderType == "1") {
+
+                mapBuy[`${getOrderDetails[i].exchangeRate}`] = `${Number(mapBuy[`${getOrderDetails[i].exchangeRate}`]) + Number(getOrderDetails[i].amount)}`;
             }
 
+        };
+
+        let data;
+
+        if (getOrderDetails.length > 0) {
+            data = {
+                pair: getOrderDetails[0].pair,
+                decimals: getOrderDetails[0].decimals[0],
+                sellOrders: mapSell,
+                buyOrders : mapBuy
+            }
+        } else {
+            data = []
         }
 
-        let data = {
-            pair: getOrderDetails[0].pair,
-            decimals: getOrderDetails[0].decimals[0],
-            orders: map
-        }
+        // console.log(getOrderDetails)
 
-      return  res.status(200).send({ status: true, data: data });
+
+        return res.status(200).send({ status: true, data: data });
     }
     catch (error) {
         console.log("Error @ fetchOrders", error);
-       return res.status(500).send({ status: false, error: error.message });
+        return res.status(500).send({ status: false, error: error.message });
     }
 };
 
 
-async function getAllTokens(req, res){
+async function getAllTokens(req, res) {
 
-    try{
+    try {
 
-        const getAllTokens = await Token.find().select({_id : 0, name : 1, symbol : 1, decimals : 1, id : 1}).lean();
+        const getAllTokens = await Token.find().select({ _id: 0, name: 1, symbol: 1, decimals: 1, id: 1 }).lean();
 
-        return  res.status(200).send({ status: true, data: getAllTokens });
+        return res.status(200).send({ status: true, data: getAllTokens });
 
     }
     catch (error) {
         console.log("Error @ getAllTokens", error);
-       return res.status(500).send({ status: false, error: error.message });
+        return res.status(500).send({ status: false, error: error.message });
     }
 
 }
