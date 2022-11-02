@@ -36,7 +36,7 @@ require("dotenv").config();
 
 async function connect() {
 
-    mongoose.connect("mongodb+srv://g-2-project-1:MvD9HwLH72zL105K@cluster0.j1yrl.mongodb.net/ze-xe-01?retryWrites=true&w=majority", {
+    mongoose.connect("mongodb+srv://g-2-project-1:MvD9HwLH72zL105K@cluster0.j1yrl.mongodb.net/ze-xe?retryWrites=true&w=majority", {
         useNewUrlParser: true
     })
         .then(() => console.log("MongoDb is connected"))

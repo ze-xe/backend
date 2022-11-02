@@ -16,7 +16,8 @@ async function getAllPairDetails(req, res) {
 
             let temp = {
                 id: allPairs[i].id,
-                exchangeRate: allPairs[i].exchangeRate
+                exchangeRate: allPairs[i].exchangeRate,
+                exchangeRateDecimals : allPairs[i].exchangeRateDecimals
             }
             let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
@@ -174,14 +175,11 @@ async function fetchOrders(req, res) {
                 pair: getOrderDetails[0].pair,
                 decimals: getOrderDetails[0].decimals[0],
                 sellOrders: mapSell,
-                buyOrders : mapBuy
+                buyOrders: mapBuy
             }
         } else {
             data = []
         }
-
-        // console.log(getOrderDetails)
-
 
         return res.status(200).send({ status: true, data: data });
     }
@@ -206,8 +204,76 @@ async function getAllTokens(req, res) {
         return res.status(500).send({ status: false, error: error.message });
     }
 
+};
+
+
+async function _getMatchedOrders() {
+
+    try {
+        connect()
+        let pairId = "8d01f5b4bbb4037e9f21fada9f44273338d9cbc46128b370f3ebafccde8ad869";
+        let exchangeRate = "1500 0000";
+        let amount = "5000000000000000000";
+        let orderType = "1";
+
+        if (orderType == '1') {
+            orderType = '0';
+        }
+        else if (orderType == '0') {
+            orderType = '1';
+        }
+
+        const getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$lte : exchangeRate}, orderType : orderType }).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        console.log(getMatchedDoc)
+
+    }
+    catch (error) {
+        console.log("Error @ getMatchedOrders", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
 }
 
 
+// getMatchedOrders()
 
-module.exports = { getAllPairDetails, fetchOrders, getAllTokens };
+
+async function getMatchedOrders(req, res) {
+
+    try {
+       
+        let pairId = req.params.pairId;
+        let exchangeRate = req.query.exchange_rate;
+        let orderType = req.query.order_type;
+        let amount = Number(req.query.amount);
+
+        if (orderType == '1') {
+            orderType = '0';
+        }
+        else if (orderType == '0') {
+            orderType = '1';
+        }
+
+        const getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$lte : Number(exchangeRate)}, orderType : orderType }).sort({exchangeRate : 1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+
+        let data = [];
+        let currAmount = 0
+        for(let i in getMatchedDoc ){
+
+            if(currAmount >= amount){
+                break;
+            }
+
+            currAmount += Number(getMatchedDoc[i].amount);
+            data.push(getMatchedDoc[i]);
+
+        }
+        
+        return res.status(200).send({ status: true, data: data });
+    }
+    catch (error) {
+        console.log("Error @ getMatchedOrders", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+}
+
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders };

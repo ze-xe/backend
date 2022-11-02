@@ -8,7 +8,7 @@ const OrderCreatedSchema = new mongoose.Schema({
     pair : String,
     maker : String,
     amount : String,
-    exchangeRate : String,
+    exchangeRate : Number,
     orderType : String,
    
 },
