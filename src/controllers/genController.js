@@ -4,7 +4,7 @@ const { PairCreated, Token, connect, OrderCreated } = require("../db")
 
 
 
-async function getAllPairDetails(req, res) {
+async function _getAllPairDetails(req, res) {
 
     try {
 
@@ -35,6 +35,68 @@ async function getAllPairDetails(req, res) {
     }
 };
 
+async function getAllPairDetails(req, res) {
+
+    try {
+        
+        let getPairDetails = await PairCreated.aggregate(
+            [
+                {
+                    $lookup: {
+                        from: 'tokens',
+                        let: { token0: "$token0", token1: "$token1" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $or: [
+                                            { $eq: ["$id", "$$token0"] },
+                                            { $eq: ["$id", "$$token1"] }
+
+                                        ]
+
+                                    }
+
+                                }
+                            },
+                            {
+                                $project: {
+                                    _id: 0,
+                                    id: 1,
+                                    name: 1,
+                                    symbol: 1,
+                                    decimals: 1
+                                }
+                            }
+
+                        ],
+                        as: "token"
+                    }
+
+                },
+                {
+                    $project:
+                    {
+                        _id: 0,
+                        id: 1,
+                        exchangeRate: 1,
+                        tokens: "$token"
+
+                    }
+                }
+
+
+            ]
+        )
+       return res.status(200).send({ status: true, data: getPairDetails });
+        
+    }
+    catch (error) {
+        console.log("Error @ getAllPairDetails", error);
+      return  res.status(500).send({ status: false, error: error.message });
+    }
+};
+
 async function fetchOrders(req, res) {
     try {
 
@@ -42,14 +104,14 @@ async function fetchOrders(req, res) {
 
         if (!pairId) {
 
-            res.status(400).send({ status: false, message: "Please provide pairId" });
+          return  res.status(400).send({ status: false, message: "Please provide pairId" });
 
         };
 
         const isPairIdExist = await PairCreated.findOne({ id: pairId });
 
         if (!isPairIdExist) {
-            res.status(404).send({ status: false, message: "Please provide valid pairId" });
+          return  res.status(404).send({ status: false, message: "Please provide valid pairId" });
         }
 
         let getOrderDetails = await OrderCreated.aggregate(
@@ -99,11 +161,11 @@ async function fetchOrders(req, res) {
             orders: map
         }
 
-        res.status(200).send({ status: true, data: data });
+      return  res.status(200).send({ status: true, data: data });
     }
     catch (error) {
         console.log("Error @ fetchOrders", error);
-        res.status(500).send({ status: false, error: error.message });
+       return res.status(500).send({ status: false, error: error.message });
     }
 }
 
