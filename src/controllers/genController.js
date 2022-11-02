@@ -4,7 +4,7 @@ const { PairCreated, Token, connect, OrderCreated } = require("../db")
 
 
 
-async function _getAllPairDetails(req, res) {
+async function getAllPairDetails(req, res) {
 
     try {
 
@@ -18,10 +18,10 @@ async function _getAllPairDetails(req, res) {
                 id: allPairs[i].id,
                 exchangeRate: allPairs[i].exchangeRate
             }
-            let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0 });
-            let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0 });
-            temp.token0 = token0;
-            temp.token1 = token1;
+            let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id : 1}).lean();
+            let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id : 1}).lean();
+            temp.tokens = [token0, token1];
+            // temp.token1 = token1
             data.push(temp)
 
         };
@@ -35,7 +35,7 @@ async function _getAllPairDetails(req, res) {
     }
 };
 
-async function getAllPairDetails(req, res) {
+async function _getAllPairDetails(req, res) {
 
     try {
         
