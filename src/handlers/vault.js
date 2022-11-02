@@ -26,7 +26,7 @@ async function handleTokenDeposited(data, argument) {
         let isUserPositionExist = await UserPosition.findOne({ id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) });
 
         if (isUserPositionExist) {
-            let currentBalance = Number(isUserPositionExist.balance) + data[2];
+            let currentBalance = Number(isUserPositionExist.balance) + Number(data[2]);
             await UserPosition.findOneAndUpdate(
                 { id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) },
                 { $set: { balance: currentBalance } }
@@ -75,7 +75,7 @@ async function handleTokenWithdrawn(data, argument) {
         let isUserPositionExist = await UserPosition.findOne({ id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) });
 
         if (isUserPositionExist) {
-            let currentBalance = Number(isUserPositionExist.balance) - data[2];
+            let currentBalance = Number(isUserPositionExist.balance) - Number(data[2]);
             await UserPosition.findOneAndUpdate(
                 { id: tronWeb.address.fromHex(data[0]), token: tronWeb.address.fromHex(data[1]) },
                 { $set: { balance: currentBalance } }

@@ -109,7 +109,7 @@ async function handleOrderCreated(data, argument) {
             )
         }
 
-        console.log("Order Created", maker, amount);
+        console.log("Order Created", maker, amount, pair);
 
     }
     catch (error) {

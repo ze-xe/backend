@@ -19,38 +19,26 @@ let lastTxnTimestamp;
 let lastBlockNumber;
 async function syncAndListen({ contractAddress, abi, handlers }) {
 
-    if (handlers["PairCreated"]) {
 
-        let syncDetails = await Sync.findOne();
 
-        if (!syncDetails) {
-            await Sync.create({ lastBlockTimestampExchange: 0 });
-            lastTxnTimestamp = 0;
+    let syncDetails = await Sync.findOne();
 
-        } else {
-            lastTxnTimestamp = syncDetails.lastBlockTimestampExchange;
-        }
+    if (!syncDetails) {
+        await Sync.create({ lastBlockTimestampExchange: 0 });
+        lastTxnTimestamp = 0;
+
+    } else {
+        lastTxnTimestamp = syncDetails.lastBlockTimestampExchange;
     }
-    // else {
-    //     let syncDetails = await Sync.findOne();
-
-    //     if (!syncDetails) {
-    //         await Sync.create({ lastBlockTimestampVault: 0 });
-    //         lastTxnTimestamp = 0;
-
-    //     } else {
-    //         lastTxnTimestamp = syncDetails.lastBlockTimestampVault;
-    //     }
-    // }
 
 
     let reqUrl = `https://nile.trongrid.io/v1/contracts/${contractAddress}/events?order_by=block_timestamp,asc&limit=50&only_confirmed=false&min_block_timestamp=${lastTxnTimestamp}`;
     let isLastPage;
 
 
-    _sync();
+    sync();
 
-    async function _sync() {
+    async function sync() {
         try {
 
 
@@ -98,51 +86,30 @@ async function syncAndListen({ contractAddress, abi, handlers }) {
 
                 }
 
+
             }
 
             if (isLastPage === false) {
-                _sync()
+                sync()
                 return
             }
             else if (isLastPage === true) {
 
 
-                if (handlers["PairCreated"]) {
+                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
+                syncAndListen({ contractAddress, abi, handlers });
 
-                    await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
-                    syncAndListen({ contractAddress, abi, handlers });
-                  
-                    return
-                }
-                //  else {
-
-                //     await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: lastTxnTimestamp, blockNumberVault: lastBlockNumber } })
-                //     syncAndListen({ contractAddress, abi, handlers });
-                  
-                //     return
-                // }
+                return
 
             }
-
-
-
 
         }
         catch (error) {
 
+            await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
+            syncAndListen({ contractAddress, abi, handlers });
 
-            if (handlers["PairCreated"]) {
-                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
-                syncAndListen({ contractAddress, abi, handlers });
-               
-                return
-            }
-            //  else {
-            //     await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: lastTxnTimestamp, blockNumberVault: lastBlockNumber } })
-            //     syncAndListen({ contractAddress, abi, handlers });
-               
-            //     return
-            // }
+            return
 
         }
     }
@@ -153,38 +120,24 @@ let _lastTxnTimestamp;
 let _lastBlockNumber;
 async function _syncAndListen({ contractAddress, abi, handlers }) {
 
-    // if (handlers["PairCreated"]) {
+   
+    let syncDetails = await Sync.findOne();
 
-    //     let syncDetails = await Sync.findOne();
+    if (!syncDetails) {
+        await Sync.create({ lastBlockTimestampVault: 0 });
+        _lastTxnTimestamp = 0;
 
-    //     if (!syncDetails) {
-    //         await Sync.create({ lastBlockTimestampExchange: 0 });
-    //         _lastTxnTimestamp = 0;
-
-    //     } else {
-    //         _lastTxnTimestamp = syncDetails.lastBlockTimestampExchange;
-    //     }
-    // }
-    // else {
-        let syncDetails = await Sync.findOne();
-
-        if (!syncDetails) {
-            await Sync.create({ lastBlockTimestampVault: 0 });
-            _lastTxnTimestamp = 0;
-
-        } else {
-            _lastTxnTimestamp = syncDetails.lastBlockTimestampVault;
-        }
-    // }
-
+    } else {
+        _lastTxnTimestamp = syncDetails.lastBlockTimestampVault;
+    }
 
     let reqUrl = `https://nile.trongrid.io/v1/contracts/${contractAddress}/events?order_by=block_timestamp,asc&limit=50&only_confirmed=false&min_block_timestamp=${lastTxnTimestamp}`;
     let isLastPage;
 
 
-    _sync();
+    sync1();
 
-    async function _sync() {
+    async function sync1() {
         try {
 
 
@@ -231,50 +184,30 @@ async function _syncAndListen({ contractAddress, abi, handlers }) {
                     }
 
                 }
+                
 
             }
 
             if (isLastPage === false) {
-                _sync()
+                sync1()
                 return
             }
             else if (isLastPage === true) {
 
+                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
+                _syncAndListen({ contractAddress, abi, handlers });
 
-                // if (handlers["PairCreated"]) {
-
-                //     await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: _lastTxnTimestamp, blockNumberExchange: _lastBlockNumber } })
-                //     syncAndListen({ contractAddress, abi, handlers });
-                  
-                //     return
-                // } else {
-
-                    await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
-                    syncAndListen({ contractAddress, abi, handlers });
-                  
-                    return
-                // }
-
+                return
+        
             }
-
-
-
 
         }
         catch (error) {
 
+            await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
+            _syncAndListen({ contractAddress, abi, handlers });
 
-            // if (handlers["PairCreated"]) {
-            //     await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: _lastTxnTimestamp, blockNumberExchange: _lastBlockNumber } })
-            //     syncAndListen({ contractAddress, abi, handlers });
-               
-            //     return
-            // } else {
-                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
-                syncAndListen({ contractAddress, abi, handlers });
-               
-                return
-            // }
+            return
 
         }
     }
