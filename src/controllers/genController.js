@@ -167,8 +167,25 @@ async function fetchOrders(req, res) {
         console.log("Error @ fetchOrders", error);
        return res.status(500).send({ status: false, error: error.message });
     }
+};
+
+
+async function getAllTokens(req, res){
+
+    try{
+
+        const getAllTokens = await Token.find().select({_id : 0, name : 1, symbol : 1, decimals : 1, id : 1}).lean();
+
+        return  res.status(200).send({ status: true, data: getAllTokens });
+
+    }
+    catch (error) {
+        console.log("Error @ getAllTokens", error);
+       return res.status(500).send({ status: false, error: error.message });
+    }
+
 }
 
 
 
-module.exports = { getAllPairDetails, fetchOrders };
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens };
