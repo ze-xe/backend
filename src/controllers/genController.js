@@ -262,14 +262,16 @@ async function getMatchedOrders(req, res) {
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
-        if (orderType == '1') {
-            orderType = '0';
-        }
-        else if (orderType == '0') {
-            orderType = '1';
-        }
+        
 
-        const getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$lte : Number(exchangeRate)}, orderType : orderType }).sort({exchangeRate : 1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        let getMatchedDoc;
+        if(orderType == '1'){
+            getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$lte : Number(exchangeRate)}, orderType : '0' }).sort({exchangeRate : 1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        }
+        else if(orderType == '0'){
+            getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$gte : Number(exchangeRate)}, orderType : '1' }).sort({exchangeRate : -1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        }
+         
 
         let data = [];
         let currAmount = 0
