@@ -1,4 +1,5 @@
-const { PairCreated, Token, connect, OrderCreated } = require("../db")
+const { PairCreated, Token, connect, OrderCreated } = require("../db");
+const { all } = require("../routes/route");
 
 
 
@@ -8,24 +9,37 @@ async function getAllPairDetails(req, res) {
 
     try {
 
-        let allPairs = await PairCreated.find();
+        let allPairs = await PairCreated.find().lean();
 
         let data = []
 
+        let promiseTokens = [];
+
         for (let i in allPairs) {
 
+           
+            let token0 =  Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
+            let token1 =  Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
+            promiseTokens.push(token0,token1)
+        };
+
+        promiseTokens = await Promise.all(promiseTokens);
+
+        for(let i in allPairs){
             let temp = {
+
                 id: allPairs[i].id,
                 exchangeRate: allPairs[i].exchangeRate,
-                exchangeRateDecimals : allPairs[i].exchangeRateDecimals
+                exchangeRateDecimals : allPairs[i].exchangeRateDecimals,
+                priceDiff : allPairs[i].priceDiff,
+                minToken0Order : allPairs[i].minToken0Order
             }
-            let token0 = await Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
-            let token1 = await Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
-            temp.tokens = [token0, token1];
-            // temp.token1 = token1
-            data.push(temp)
 
-        };
+           let token0 = promiseTokens[2 * i];
+           let token1 = promiseTokens[ 2 * i + 1];
+            temp.tokens = [token0, token1];
+            data.push(temp)
+        }
 
         res.status(200).send({ status: true, data: data });
 
@@ -66,12 +80,13 @@ async function _getAllPairDetails(req, res) {
                                     id: 1,
                                     name: 1,
                                     symbol: 1,
-                                    decimals: 1
+                                    decimals: 1,
+                                    token0 : 1
                                 }
                             }
 
                         ],
-                        as: "token"
+                        as: "tokens"
                     }
 
                 },
@@ -81,7 +96,7 @@ async function _getAllPairDetails(req, res) {
                         _id: 0,
                         id: 1,
                         exchangeRate: 1,
-                        tokens: "$token"
+                        tokens: 1
 
                     }
                 }
