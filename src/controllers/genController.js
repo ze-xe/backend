@@ -154,6 +154,9 @@ async function fetchOrders(req, res) {
                         decimals: "$pairDetails.exchangeRateDecimals",
                         orderType: 1
                     }
+                },
+                {
+                    $sort : {"exchangeRate" : 1}
                 }
 
             ]
@@ -191,7 +194,7 @@ async function fetchOrders(req, res) {
 
         for(let i in sellEntries){
             let temp = {
-                exchangeRate : sellEntries[i][0],
+                exchangeRate : Number(sellEntries[i][0]),
                 amount : sellEntries[i][1]
             }
             sellOrders.push(temp)
@@ -203,11 +206,14 @@ async function fetchOrders(req, res) {
 
         for(let i in buyEntries){
             let temp = {
-                exchangeRate : buyEntries[i][0],
+                exchangeRate : Number(buyEntries[i][0]),
                 amount : buyEntries[i][1]
             }
             buyOrders.push(temp)
         }
+        
+        buyOrders = buyOrders.sort((a,b)=>(b.exchangeRate - a.exchangeRate));
+        sellOrders = sellOrders.sort((a,b)=>(a.exchangeRate - b.exchangeRate));
         
 
         if (getOrderDetails.length > 0) {
@@ -291,6 +297,100 @@ async function getMatchedOrders(req, res) {
     catch (error) {
         console.log("Error @ getMatchedOrders", error);
         return res.status(500).send({ status: false, error: error.message });
+    }
+};
+
+
+async function getPriceDetails(){
+
+    try{
+
+        let data = [
+            {
+                exchangeRate : 1500,
+                pair : "abc",
+                amount : 200,
+                timestamp : 1667462562000
+            },
+            {
+                exchangeRate : 1510,
+                pair : "abc",
+                amount : 10,
+                timestamp : 1667462622000
+            },
+            {
+                exchangeRate : 1505,
+                pair : "abc",
+                amount : 20,
+                timestamp : 1667462682000
+            },
+            {
+                exchangeRate : 1490,
+                pair : "abc",
+                amount : 50,
+                timestamp :1667462742000
+            },
+            {
+                exchangeRate : 1550,
+                pair : "abc",
+                amount : 30,
+                timestamp :  1667462802000
+            },
+            {
+                exchangeRate : 1510,
+                pair : "abc",
+                amount : 40,
+                timestamp : 1667462862000
+            },
+            {
+                exchangeRate : 1530,
+                pair : "abc",
+                amount : 50,
+                timestamp : 1667462922000
+            },
+            {
+                exchangeRate : 1480,
+                pair : "abc",
+                amount : 70,
+                timestamp : 1667462982000
+            },
+            {
+                exchangeRate : 1495,
+                pair : "abc",
+                amount : 85,
+                timestamp : 1667463042000
+            },
+            {
+                exchangeRate : 1515,
+                pair : "abc",
+                amount : 95,
+                timestamp : 1667463102000
+            },
+            {
+                exchangeRate : 1503,
+                pair : "abc",
+                amount : 5,
+                timestamp : 1667463162000
+            },
+            {
+                exchangeRate : 1509,
+                pair : "abc",
+                amount : 15,
+                timestamp :  1667463222000
+            },
+            {
+                exchangeRate : 1520,
+                pair : "abc",
+                amount : 2,
+                timestamp : 1667463282000
+            },
+        ]
+
+    }
+
+    catch (error) {
+        console.log("Error @ getPriceDetails", error);
+        // return res.status(500).send({ status: false, error: error.message });
     }
 }
 
