@@ -399,7 +399,7 @@ async function getPriceDetails() {
     }
 }
 
-getPriceDetails()
+// getPriceDetails()
 
 module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders };
 
