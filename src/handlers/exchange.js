@@ -110,7 +110,7 @@ async function handleOrderCreated(data, argument) {
             )
         }
 
-        console.log("Order Created", maker, amount, pair);
+        console.log("Order Created", maker, amount, id);
 
     }
     catch (error) {
@@ -126,7 +126,8 @@ async function handleOrderExecuted(data, argument) {
         const isDuplicateTxn = await OrderExecuted.findOne({
             txnId: argument.txnId,
             blockNumber: argument.blockNumber,
-            blockTimestamp: argument.blockTimestamp
+            blockTimestamp: argument.blockTimestamp,
+            id : data[0]
         });
 
         if (isDuplicateTxn) {
@@ -140,11 +141,15 @@ async function handleOrderExecuted(data, argument) {
         argument.taker = taker;
         argument.fillAmount = fillAmount;
 
-        OrderExecuted.create(argument);
-
         let getOrderDetails = await OrderCreated.findOne({ id: id });
 
         let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
+
+        argument.exchangeRate = getOrderDetails.exchangeRate;
+        argument.pair = getOrderDetails.pair;
+        argument.exchangeRateDecimals = Number(getPairDetails.exchangeRateDecimals)
+
+        OrderExecuted.create(argument);
 
         let priceDiff = new Big(getOrderDetails.exchangeRate).minus(getPairDetails.exchangeRate).toString();
 

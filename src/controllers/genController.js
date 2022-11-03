@@ -1,7 +1,5 @@
-const { PairCreated, Token, connect, OrderCreated } = require("../db");
-const { all } = require("../routes/route");
-
-
+const { PairCreated, Token, connect, OrderCreated, OrderExecuted } = require("../db");
+const Big = require('big.js');
 
 
 
@@ -17,26 +15,26 @@ async function getAllPairDetails(req, res) {
 
         for (let i in allPairs) {
 
-           
-            let token0 =  Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
-            let token1 =  Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
-            promiseTokens.push(token0,token1)
+
+            let token0 = Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
+            let token1 = Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
+            promiseTokens.push(token0, token1)
         };
 
         promiseTokens = await Promise.all(promiseTokens);
 
-        for(let i in allPairs){
+        for (let i in allPairs) {
             let temp = {
 
                 id: allPairs[i].id,
                 exchangeRate: allPairs[i].exchangeRate,
-                exchangeRateDecimals : allPairs[i].exchangeRateDecimals,
-                priceDiff : allPairs[i].priceDiff,
-                minToken0Order : allPairs[i].minToken0Order
+                exchangeRateDecimals: allPairs[i].exchangeRateDecimals,
+                priceDiff: allPairs[i].priceDiff,
+                minToken0Order: allPairs[i].minToken0Order
             }
 
-           let token0 = promiseTokens[2 * i];
-           let token1 = promiseTokens[ 2 * i + 1];
+            let token0 = promiseTokens[2 * i];
+            let token1 = promiseTokens[2 * i + 1];
             temp.tokens = [token0, token1];
             data.push(temp)
         }
@@ -81,7 +79,7 @@ async function _getAllPairDetails(req, res) {
                                     name: 1,
                                     symbol: 1,
                                     decimals: 1,
-                                    token0 : 1
+                                    token0: 1
                                 }
                             }
 
@@ -156,7 +154,7 @@ async function fetchOrders(req, res) {
                     }
                 },
                 {
-                    $sort : {"exchangeRate" : 1}
+                    $sort: { "exchangeRate": 1 }
                 }
 
             ]
@@ -188,33 +186,33 @@ async function fetchOrders(req, res) {
 
         let data;
 
-        let sellOrders  = [];
+        let sellOrders = [];
 
         let sellEntries = Object.entries(mapSell);
 
-        for(let i in sellEntries){
+        for (let i in sellEntries) {
             let temp = {
-                exchangeRate : Number(sellEntries[i][0]),
-                amount : sellEntries[i][1]
+                exchangeRate: Number(sellEntries[i][0]),
+                amount: sellEntries[i][1]
             }
             sellOrders.push(temp)
         }
-        
-        let buyOrders  = [];
+
+        let buyOrders = [];
 
         let buyEntries = Object.entries(mapBuy);
 
-        for(let i in buyEntries){
+        for (let i in buyEntries) {
             let temp = {
-                exchangeRate : Number(buyEntries[i][0]),
-                amount : buyEntries[i][1]
+                exchangeRate: Number(buyEntries[i][0]),
+                amount: buyEntries[i][1]
             }
             buyOrders.push(temp)
         }
-        
-        buyOrders = buyOrders.sort((a,b)=>(b.exchangeRate - a.exchangeRate));
-        sellOrders = sellOrders.sort((a,b)=>(a.exchangeRate - b.exchangeRate));
-        
+
+        buyOrders = buyOrders.sort((a, b) => (b.exchangeRate - a.exchangeRate));
+        sellOrders = sellOrders.sort((a, b) => (a.exchangeRate - b.exchangeRate));
+
 
         if (getOrderDetails.length > 0) {
             data = {
@@ -262,28 +260,28 @@ async function getAllTokens(req, res) {
 async function getMatchedOrders(req, res) {
 
     try {
-       
+
         let pairId = req.params.pairId;
         let exchangeRate = req.query.exchange_rate;
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
-        
+
 
         let getMatchedDoc;
-        if(orderType == '1'){
-            getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$lte : Number(exchangeRate)}, orderType : '0' }).sort({exchangeRate : 1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        if (orderType == '1') {
+            getMatchedDoc = await OrderCreated.find({ pair: pairId, exchangeRate: { $lte: Number(exchangeRate) }, orderType: '0' }).sort({ exchangeRate: 1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
         }
-        else if(orderType == '0'){
-            getMatchedDoc = await OrderCreated.find({pair : pairId, exchangeRate : {$gte : Number(exchangeRate)}, orderType : '1' }).sort({exchangeRate : -1}).select({id : 1, amount : 1, exchangeRate : 1, _id : 0}).lean();
+        else if (orderType == '0') {
+            getMatchedDoc = await OrderCreated.find({ pair: pairId, exchangeRate: { $gte: Number(exchangeRate) }, orderType: '1' }).sort({ exchangeRate: -1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
         }
-         
+
 
         let data = [];
         let currAmount = 0
-        for(let i in getMatchedDoc ){
+        for (let i in getMatchedDoc) {
 
-            if(currAmount >= amount){
+            if (currAmount >= amount) {
                 break;
             }
 
@@ -291,7 +289,7 @@ async function getMatchedOrders(req, res) {
             data.push(getMatchedDoc[i]);
 
         }
-        
+
         return res.status(200).send({ status: true, data: data });
     }
     catch (error) {
@@ -301,90 +299,97 @@ async function getMatchedOrders(req, res) {
 };
 
 
-async function getPriceDetails(){
+async function getPriceDetails() {
 
-    try{
+    try {
 
-        let data = [
-            {
-                exchangeRate : 1500,
-                pair : "abc",
-                amount : 200,
-                timestamp : 1667462562000
-            },
-            {
-                exchangeRate : 1510,
-                pair : "abc",
-                amount : 10,
-                timestamp : 1667462622000
-            },
-            {
-                exchangeRate : 1505,
-                pair : "abc",
-                amount : 20,
-                timestamp : 1667462682000
-            },
-            {
-                exchangeRate : 1490,
-                pair : "abc",
-                amount : 50,
-                timestamp :1667462742000
-            },
-            {
-                exchangeRate : 1550,
-                pair : "abc",
-                amount : 30,
-                timestamp :  1667462802000
-            },
-            {
-                exchangeRate : 1510,
-                pair : "abc",
-                amount : 40,
-                timestamp : 1667462862000
-            },
-            {
-                exchangeRate : 1530,
-                pair : "abc",
-                amount : 50,
-                timestamp : 1667462922000
-            },
-            {
-                exchangeRate : 1480,
-                pair : "abc",
-                amount : 70,
-                timestamp : 1667462982000
-            },
-            {
-                exchangeRate : 1495,
-                pair : "abc",
-                amount : 85,
-                timestamp : 1667463042000
-            },
-            {
-                exchangeRate : 1515,
-                pair : "abc",
-                amount : 95,
-                timestamp : 1667463102000
-            },
-            {
-                exchangeRate : 1503,
-                pair : "abc",
-                amount : 5,
-                timestamp : 1667463162000
-            },
-            {
-                exchangeRate : 1509,
-                pair : "abc",
-                amount : 15,
-                timestamp :  1667463222000
-            },
-            {
-                exchangeRate : 1520,
-                pair : "abc",
-                amount : 2,
-                timestamp : 1667463282000
-            },
-        ]
+        await connect();
+
+        let data = await OrderExecuted.find({ pair: "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032" }).sort({ blockTimestamp: 1 }).lean()
+        // console.log(data)
+        if (data.length == 0) {
+            return console.log("nothing")
+        }
+        let res = [];
+
+        let min = Infinity;
+        let max = 0;
+        let open = data[0].exchangeRate;
+        let close = data[0].exchangeRate;
+        let currTimestamp = data[0].blockTimestamp;
+        let endTimestamp;
+        let volume = 0;
+
+        for (let i in data) {
+           
+            if (data[i].blockTimestamp <= currTimestamp + 24*3600000) {
+
+                if (data[i].exchangeRate > max) {
+                    max = data[i].exchangeRate;
+                }
+
+                if (data[i].exchangeRate < min) {
+                    min = data[i].exchangeRate
+                }
+
+                close = data[i].exchangeRate;
+                endTimestamp = data[i].blockTimestamp;
+                volume = Big(volume).plus(data[i].fillAmount).toString();
+
+                if (i == data.length - 1) {
+
+                    let temp = {
+                        open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        timeS : currTimestamp,
+                        timeE : endTimestamp,
+                        volume : Big(volume).div(Big(10).pow(18)).toString()
+                    }
+                    res.push(temp);
+
+                }
+            }
+            else {
+
+                let temp = {
+                    open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    timeS : currTimestamp,
+                    timeE : endTimestamp,
+                    volume : Big(volume).div(Big(10).pow(18)).toString()
+                }
+                res.push(temp);
+
+                min = data[i].exchangeRate;
+                max = data[i].exchangeRate;
+                open = data[i].exchangeRate;
+                close = data[i].exchangeRate;
+                currTimestamp = data[i].blockTimestamp;
+                endTimestamp = data[i].blockTimestamp;
+                volume = data[i].fillAmount;
+
+                if (i == data.length - 1) {
+
+                    let temp = {
+                        open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        timeS : currTimestamp,
+                        timeE : endTimestamp,
+                        volume : Big(volume).div(Big(10).pow(18)).toString()
+                    }
+                    res.push(temp);
+
+                }
+
+            }
+        };
+        console.log("res", res)
 
     }
 
@@ -394,4 +399,88 @@ async function getPriceDetails(){
     }
 }
 
+getPriceDetails()
+
 module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders };
+
+
+// let data = [
+//     {
+//         exchangeRate: 1500,
+//         pair: "abc",
+//         amount: 200,
+//         timestamp: 1667462562000
+//     },
+//     {
+//         exchangeRate: 1510,
+//         pair: "abc",
+//         amount: 10,
+//         timestamp: 1667462622000
+//     },
+//     {
+//         exchangeRate: 1505,
+//         pair: "abc",
+//         amount: 20,
+//         timestamp: 1667462682000
+//     },
+//     {
+//         exchangeRate: 1490,
+//         pair: "abc",
+//         amount: 50,
+//         timestamp: 1667462742000
+//     },
+//     {
+//         exchangeRate: 1550,
+//         pair: "abc",
+//         amount: 30,
+//         timestamp: 1667462802000
+//     },
+//     {
+//         exchangeRate: 1510,
+//         pair: "abc",
+//         amount: 40,
+//         timestamp: 1667462862000
+//     },
+//     {
+//         exchangeRate: 1530,
+//         pair: "abc",
+//         amount: 50,
+//         timestamp: 1667462922000
+//     },
+//     {
+//         exchangeRate: 1480,
+//         pair: "abc",
+//         amount: 70,
+//         timestamp: 1667462982000
+//     },
+//     {
+//         exchangeRate: 1495,
+//         pair: "abc",
+//         amount: 85,
+//         timestamp: 1667463042000
+//     },
+//     {
+//         exchangeRate: 1515,
+//         pair: "abc",
+//         amount: 95,
+//         timestamp: 1667463102000
+//     },
+//     {
+//         exchangeRate: 1503,
+//         pair: "abc",
+//         amount: 5,
+//         timestamp: 1667463162000
+//     },
+//     {
+//         exchangeRate: 1509,
+//         pair: "abc",
+//         amount: 15,
+//         timestamp: 1667463222000
+//     },
+//     {
+//         exchangeRate: 1520,
+//         pair: "abc",
+//         amount: 2,
+//         timestamp: 1667463282000
+//     },
+// ]
