@@ -39,7 +39,3 @@ async function handleToken(token){
 };
 
 module.exports = {handleToken}
-
-
-let x = new Big(3e3)
-console.log(x.minus(2).toString())

@@ -1,6 +1,7 @@
 const { TokenWithdrawn, TokenDeposited, PairCreated, OrderCreated, OrderExecuted, UserPosition } = require("../db");
 const { tronWeb } = require("../utils");
 const { handleToken } = require("./token");
+const Big = require('big.js')
 
 
 async function handlePairCreated(data, argument) {
@@ -145,7 +146,7 @@ async function handleOrderExecuted(data, argument) {
 
         let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
 
-        let priceDiff = Number(getOrderDetails.exchangeRate) - Number(getPairDetails.exchangeRate);
+        let priceDiff = new Big(getOrderDetails.exchangeRate).minus(getPairDetails.exchangeRate).toString();
 
         await PairCreated.findOneAndUpdate(
             {_id : getPairDetails._id.toString()},
@@ -161,7 +162,7 @@ async function handleOrderExecuted(data, argument) {
 
             let getUserPosition0 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token0 });
 
-            let currentInOrderBalance0 = Number(getUserPosition0.inOrderBalance ?? 0) - Number(fillAmount);
+            let currentInOrderBalance0 = new Big(getUserPosition0.inOrderBalance ?? 0).minus(fillAmount).toString();
 
             await UserPosition.findOneAndUpdate(
                 { id: getOrderDetails.maker, token: token0 },
@@ -171,13 +172,15 @@ async function handleOrderExecuted(data, argument) {
             let getUserPosition1 = await UserPosition.findOne({ id: getOrderDetails.maker, token: token1 });
 
             if (getUserPosition1) {
-                let currentBalance1 = Number(getUserPosition1.balance) + ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));
-
+                // let currentBalance2 = Number(getUserPosition1.balance) + ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));                            
+                let currentBalance1 = new Big(getUserPosition1.balance).plus((Big(fillAmount).times(getOrderDetails.exchangeRate)).div(Big(10).pow(Number(getPairDetails.exchangeRateDecimals)))).toNumber();
+              
                 await UserPosition.findOneAndUpdate(
                     { id: getOrderDetails.maker, token: token1 },
                     { $set: { balance: currentBalance1 } }
                 )
             }
+           
             else {
                 let temp = {
                     id: getOrderDetails.maker,
@@ -188,13 +191,14 @@ async function handleOrderExecuted(data, argument) {
 
                 UserPosition.create(temp)
             }
+
             // for taker
 
             let getUserPositionTaker0 = await UserPosition.findOne({ id: taker, token: token0 });
 
             if (getUserPositionTaker0) {
 
-                let currentBalanceTaker0 = Number(getUserPositionTaker0.balance) + Number(fillAmount);
+                let currentBalanceTaker0 = new Big(getUserPositionTaker0.balance).plus(fillAmount);
 
                 await UserPosition.findOneAndUpdate(
                     { id: taker, token: token0 },
@@ -222,7 +226,7 @@ async function handleOrderExecuted(data, argument) {
                 { $set: { balance: currentBalanceTaker1 } }
             )
 
-            let currentFillAmount = Number(getOrderDetails.amount) - Number(fillAmount);
+            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount);
 
             if (currentFillAmount == '0') {
                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
@@ -302,7 +306,7 @@ async function handleOrderExecuted(data, argument) {
                 UserPosition.create(temp)
             }
 
-            let currentFillAmount = Number(getOrderDetails.amount) - Number(fillAmount);
+            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount);
 
             if (currentFillAmount == '0') {
                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
