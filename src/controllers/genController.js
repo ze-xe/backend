@@ -299,18 +299,30 @@ async function getMatchedOrders(req, res) {
 };
 
 
-async function getPriceDetails() {
+async function getPairPriceTrend(req, res) {
 
     try {
 
-        await connect();
+        let pairId = req.params.pairId;
+        let interval = Number(req.query.interval);
 
-        let data = await OrderExecuted.find({ pair: "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032" }).sort({ blockTimestamp: 1 }).lean()
-        // console.log(data)
-        if (data.length == 0) {
-            return console.log("nothing")
+        if (isNaN(interval) == true || interval < 60000) {
+            return res.status(400).send({ status: false, message: `interval ${interval} must be valid number greater than 300000` });
         }
-        let res = [];
+
+        let data = await OrderExecuted.find({ pair: pairId }).sort({ blockTimestamp: 1, createdAt: 1 }).lean()
+
+        if (data.length == 0) {
+
+            let isPairExist = await PairCreated.findOne({ id: pairId });
+
+            if (!isPairExist) {
+                return res.status(400).send({ status: false, message: `pairId ${pairId} does not exist` });
+            }
+            return res.status(200).send({ status: true, data : [] });
+        }
+
+        let result = [];
 
         let min = Infinity;
         let max = 0;
@@ -321,8 +333,8 @@ async function getPriceDetails() {
         let volume = 0;
 
         for (let i in data) {
-           
-            if (data[i].blockTimestamp <= currTimestamp + 24*3600000) {
+
+            if (data[i].blockTimestamp <= currTimestamp + interval) {
 
                 if (data[i].exchangeRate > max) {
                     max = data[i].exchangeRate;
@@ -339,30 +351,30 @@ async function getPriceDetails() {
                 if (i == data.length - 1) {
 
                     let temp = {
-                        open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        timeS : currTimestamp,
-                        timeE : endTimestamp,
-                        volume : Big(volume).div(Big(10).pow(18)).toString()
+                        time: currTimestamp/1000,
+                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                        high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                        // timeE: endTimestamp,
+                        // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
-                    res.push(temp);
+                    result.push(temp);
 
                 }
             }
             else {
 
                 let temp = {
-                    open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    timeS : currTimestamp,
-                    timeE : endTimestamp,
-                    volume : Big(volume).div(Big(10).pow(18)).toString()
+                    time: currTimestamp/1000,
+                    open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                    high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                    // timeE: endTimestamp,
+                    // volume: Big(volume).div(Big(10).pow(18)).toString()
                 }
-                res.push(temp);
+                result.push(temp);
 
                 min = data[i].exchangeRate;
                 max = data[i].exchangeRate;
@@ -374,34 +386,43 @@ async function getPriceDetails() {
 
                 if (i == data.length - 1) {
 
+                    // let temp = {
+                    //     open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    //     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    //     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    //     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                    //     timeS: currTimestamp,
+                    //     timeE: endTimestamp,
+                    //     volume: Big(volume).div(Big(10).pow(18)).toString()
+                    // }
                     let temp = {
-                        open : Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        close : Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        high : Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        low : Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        timeS : currTimestamp,
-                        timeE : endTimestamp,
-                        volume : Big(volume).div(Big(10).pow(18)).toString()
+                        time: currTimestamp/1000,
+                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                        high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
+                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                        // timeE: endTimestamp,
+                        // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
-                    res.push(temp);
+                    result.push(temp);
 
                 }
 
             }
         };
-        console.log("res", res)
-
+        console.log("res", result)
+        return res.status(200).send({ status: true, data: result });
     }
 
     catch (error) {
         console.log("Error @ getPriceDetails", error);
-        // return res.status(500).send({ status: false, error: error.message });
+        return res.status(500).send({ status: false, error: error.message });
     }
 }
 
-// getPriceDetails()
 
-module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders };
+
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend };
 
 
 // let data = [

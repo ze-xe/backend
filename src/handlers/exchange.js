@@ -51,8 +51,15 @@ async function handleOrderCreated(data, argument) {
 
         if (isDuplicateTxn) {
             return
-        }
+        };
 
+        const isDuplicateId = await OrderCreated.findOne({id : data[0]});
+        
+        if(isDuplicateId){
+           let  delteDuplicateOrder = await OrderCreated.deleteOne({_id : isDuplicateId._id})
+            console.log("OrderDelete",tronWeb.address.fromHex(data[2]), data[3], data[1], delteDuplicateOrder )
+        }
+        
         let id = data[0];
         let pair = data[1];
         let maker = tronWeb.address.fromHex(data[2]);

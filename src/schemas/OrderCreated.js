@@ -4,7 +4,7 @@ const OrderCreatedSchema = new mongoose.Schema({
     txnId : String,
     blockNumber : Number,
     blockTimestamp : String,  
-    id : String,
+    id : {type:String, unique : true},
     pair : String,
     maker : String,
     amount : String,
