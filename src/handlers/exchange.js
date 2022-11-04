@@ -57,13 +57,13 @@ async function handleOrderCreated(data, argument) {
         
         if(isDuplicateId){
            let  delteDuplicateOrder = await OrderCreated.deleteOne({_id : isDuplicateId._id})
-            console.log("OrderDelete",tronWeb.address.fromHex(data[2]), data[3], data[1], delteDuplicateOrder )
+            console.log("OrderDelete",tronWeb.address.fromHex(data[2]), data[3], data[1])
         }
         
         let id = data[0];
         let pair = data[1];
         let maker = tronWeb.address.fromHex(data[2]);
-        let amount = data[3];
+        let amount = Big(data[3]).toString();
         let exchangeRate = data[4];
         let orderType = data[5];
         argument.id = id;
@@ -238,9 +238,9 @@ async function handleOrderExecuted(data, argument) {
                 { $set: { balance: currentBalanceTaker1 } }
             )
 
-            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount);
+            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount).toString();
 
-            if (currentFillAmount == '0') {
+            if (Number(currentFillAmount) < Number(getPairDetails.minToken0Order)) {
                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
             }
             else {
@@ -318,9 +318,9 @@ async function handleOrderExecuted(data, argument) {
                 UserPosition.create(temp)
             }
 
-            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount);
+            let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount).toString();
 
-            if (currentFillAmount == '0') {
+            if ((Number(currentFillAmount) < Number(getPairDetails.minToken0Order)) ) {
                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
             }
             else {
