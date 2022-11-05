@@ -9,6 +9,7 @@ const OrderCreatedSchema = require('./schemas/OrderCreated');
 const OrderExecutedSchema = require('./schemas/OrderExecuted');
 const TokenSchema = require('./schemas/Token');
 const UserPositionSchema = require('./schemas/UserPosition');
+const OrderCancelledSchema = require('./schemas/OrderCancelled.js');
 
 
 
@@ -20,7 +21,7 @@ const OrderCreated = mongoose.model("OrderCreated", OrderCreatedSchema);
 const OrderExecuted = mongoose.model('OrderExecuted', OrderExecutedSchema);
 const Token = mongoose.model("Token", TokenSchema);
 const UserPosition= mongoose.model("UserPosition", UserPositionSchema)
-
+const OrderCancelled = mongoose.model("OrderCancelled", OrderCancelledSchema)
 
 require("dotenv").config();
 
@@ -47,4 +48,4 @@ async function connect() {
 
 
 
-module.exports = { Sync, connect, TokenDeposited, TokenWithdrawn, PairCreated, OrderCreated, OrderExecuted, Token, UserPosition }
+module.exports = { Sync, connect, TokenDeposited, TokenWithdrawn, PairCreated, OrderCreated, OrderExecuted, Token, UserPosition , OrderCancelled}

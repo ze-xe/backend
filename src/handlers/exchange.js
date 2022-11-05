@@ -1,4 +1,4 @@
-const { TokenWithdrawn, TokenDeposited, PairCreated, OrderCreated, OrderExecuted, UserPosition } = require("../db");
+const { TokenWithdrawn, TokenDeposited, PairCreated, OrderCreated, OrderExecuted, UserPosition, OrderCancelled } = require("../db");
 const { tronWeb } = require("../utils");
 const { handleToken } = require("./token");
 const Big = require('big.js')
@@ -53,13 +53,13 @@ async function handleOrderCreated(data, argument) {
             return
         };
 
-        const isDuplicateId = await OrderCreated.findOne({id : data[0]});
-        
-        if(isDuplicateId){
-           let  delteDuplicateOrder = await OrderCreated.deleteOne({_id : isDuplicateId._id})
-            console.log("OrderDelete",tronWeb.address.fromHex(data[2]), data[3], data[1])
+        const isDuplicateId = await OrderCreated.findOne({ id: data[0] });
+
+        if (isDuplicateId) {
+            let delteDuplicateOrder = await OrderCreated.deleteOne({ _id: isDuplicateId._id })
+            console.log("OrderDelete", tronWeb.address.fromHex(data[2]), data[3], data[1])
         }
-        
+
         let id = data[0];
         let pair = data[1];
         let maker = tronWeb.address.fromHex(data[2]);
@@ -134,7 +134,7 @@ async function handleOrderExecuted(data, argument) {
             txnId: argument.txnId,
             blockNumber: argument.blockNumber,
             blockTimestamp: argument.blockTimestamp,
-            id : data[0]
+            id: data[0]
         });
 
         if (isDuplicateTxn) {
@@ -162,13 +162,13 @@ async function handleOrderExecuted(data, argument) {
         let priceDiff = new Big(getOrderDetails.exchangeRate).minus(getPairDetails.exchangeRate).toString();
 
         await PairCreated.findOneAndUpdate(
-            {_id : getPairDetails._id.toString()},
-            {$set : {exchangeRate : getOrderDetails.exchangeRate, priceDiff : priceDiff}}
+            { _id: getPairDetails._id.toString() },
+            { $set: { exchangeRate: getOrderDetails.exchangeRate, priceDiff: priceDiff } }
         )
 
         if (getOrderDetails.orderType == '0') {
             // for maker
-          
+
             let token0 = getPairDetails.token0;
 
             let token1 = getPairDetails.token1;
@@ -187,13 +187,13 @@ async function handleOrderExecuted(data, argument) {
             if (getUserPosition1) {
                 // let currentBalance2 = Number(getUserPosition1.balance) + ((Number(fillAmount) * Number(getOrderDetails.exchangeRate)) / 10 ** Number(getPairDetails.exchangeRateDecimals));                            
                 let currentBalance1 = new Big(getUserPosition1.balance).plus((Big(fillAmount).times(getOrderDetails.exchangeRate)).div(Big(10).pow(Number(getPairDetails.exchangeRateDecimals)))).toNumber();
-              
+
                 await UserPosition.findOneAndUpdate(
                     { id: getOrderDetails.maker, token: token1 },
                     { $set: { balance: currentBalance1 } }
                 )
             }
-           
+
             else {
                 let temp = {
                     id: getOrderDetails.maker,
@@ -225,7 +225,7 @@ async function handleOrderExecuted(data, argument) {
                     id: taker,
                     token: token0,
                     balance: fillAmount,
-                    inOrderBalance : '0'
+                    inOrderBalance: '0'
                 }
                 UserPosition.create(temp)
             }
@@ -242,7 +242,7 @@ async function handleOrderExecuted(data, argument) {
             let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount).toString();
 
             if (Number(currentFillAmount) < Number(getPairDetails.minToken0Order)) {
-               await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
+                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
             }
             else {
                 await OrderCreated.findOneAndUpdate(
@@ -321,8 +321,8 @@ async function handleOrderExecuted(data, argument) {
 
             let currentFillAmount = new Big(getOrderDetails.amount).minus(fillAmount).toString();
 
-            if ((Number(currentFillAmount) < Number(getPairDetails.minToken0Order)) ) {
-               await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
+            if ((Number(currentFillAmount) < Number(getPairDetails.minToken0Order))) {
+                await OrderCreated.findByIdAndDelete({ _id: getOrderDetails._id.toString() });
             }
             else {
                 await OrderCreated.findOneAndUpdate(
@@ -343,5 +343,61 @@ async function handleOrderExecuted(data, argument) {
 
 };
 
+async function handleOrderUpdated(data, argument) {
+    try {
 
-module.exports = { handlePairCreated, handleOrderCreated, handleOrderExecuted };
+        const isDuplicateTxn = await OrderCreated.findOne({
+            txnId: argument.txnId,
+            blockNumber: argument.blockNumber,
+            blockTimestamp: argument.blockTimestamp,
+            amount: data[1]
+        });
+
+        if (isDuplicateTxn) {
+            return
+        }
+
+        let getOrderDoc = await OrderCreated.findOne({ id: data[0] });
+
+        if (!getOrderDoc) {
+            return
+        };
+
+        if (data[1] == '0') {
+            await OrderCancelled.create({
+                txnId: argument.txnId,
+                blockNumber: argument.blockNumber,
+                blockTimestamp: argument.blockTimestamp,
+                id: getOrderDoc.id,
+                pair: getOrderDoc.pair,
+                maker: getOrderDoc.maker,
+                amount: getOrderDoc.amount,
+                exchangeRate: getOrderDoc.exchangeRate,
+                orderType: getOrderDoc.orderType,
+            });
+            await OrderCreated.deleteOne({ _id: getOrderDoc._id.toString() });
+            console.log("Order cancelled", data[1], data[0])
+            return
+        }
+
+        await OrderCreated.updateOne(
+            { _id: getOrderDoc._id },
+            {
+                $set: {
+                    txnId: argument.txnId,
+                    blockNumber: argument.blockNumber,
+                    blockTimestamp: argument.blockTimestamp,
+                    amount: data[1]
+                }
+            }
+        )
+        console.log("Order Updated", data[1], data[0])
+
+    }
+    catch (error) {
+        console.log("Error @ handleOrderUpdated", error)
+    }
+}
+
+
+module.exports = { handlePairCreated, handleOrderCreated, handleOrderExecuted, handleOrderUpdated };

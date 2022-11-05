@@ -1,7 +1,7 @@
 const { getExchangeAddress, tronWeb } = require("../../utils");
 const { getExchangeABI } = require("../../utils");
 
-const {handlePairCreated, handleOrderCreated, handleOrderExecuted} = require('../../handlers/exchange')
+const {handlePairCreated, handleOrderCreated, handleOrderExecuted, handleOrderUpdated} = require('../../handlers/exchange')
 
 
 
@@ -17,6 +17,7 @@ const ExchangeConfig = {
         "PairCreated": handlePairCreated,
         "OrderCreated" : handleOrderCreated,
         "OrderExecuted" : handleOrderExecuted,
+        "OrderUpdated" : handleOrderUpdated
     }
 };
 

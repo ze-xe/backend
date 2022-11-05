@@ -454,7 +454,7 @@ async function getUserOrderHistory(req, res) {
         let taker = req.params.taker;
         let pairId = req.params.pairId;
 
-        const getOrderHistory = await OrderExecuted.find({ taker: taker, pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ orderType: 1, exchangeRate: 1, fillAmount: 1, _id: 0 }).lean()
+        const getOrderHistory = await OrderExecuted.find({ taker: taker, pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ orderType: 1, exchangeRate: 1, fillAmount: 1, _id: 0 }).limit(50).lean()
 
         return res.status(200).send({ status: true, data: getOrderHistory });
     }
@@ -470,8 +470,8 @@ async function userDepositsAndWithdraws(req, res) {
 
         let userId = req.params.id;
 
-        let deposits = TokenDeposited.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).lean();
-        let withdraws = TokenWithdrawn.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).lean();
+        let deposits = TokenDeposited.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).limit(50).lean();
+        let withdraws = TokenWithdrawn.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).limit(50).lean();
 
         let promise = await Promise.all([deposits, withdraws]);
 
@@ -493,7 +493,7 @@ async function getPairOrderExecutedHistory(req, res) {
 
         let pairId = req.params.id;
 
-        let getPairOrderHistory = await OrderExecuted.find({pair : pairId}).sort({ blockTimestamp: -1, createdAt: -1}).select({fillAmount: 1, exchangeRate : 1, orderType : 1, _id : 0}).lean();
+        let getPairOrderHistory = await OrderExecuted.find({ pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ fillAmount: 1, exchangeRate: 1, orderType: 1, _id: 0 }).limit(50).lean();
 
         return res.status(200).send({ status: true, data: getPairOrderHistory });
 
@@ -502,10 +502,108 @@ async function getPairOrderExecutedHistory(req, res) {
         console.log("Error @ getPairOrderExecutedHistory", error);
         return res.status(500).send({ status: false, error: error.message });
     }
+};
+
+
+async function getPairTradingStatus(req, res) {
+
+    try {
+
+        let pairId = req.params.pairId;
+
+        let _24hr = 24 * 60 * 60 * 1000;
+        let _7D = 7 * _24hr;
+        let _30D = 30 * _24hr;
+        let _90D = 3 * _30D;
+        let _1Yr = 365 * _24hr;
+
+        interval = [_24hr, _7D, _30D, _90D, _1Yr];
+
+        let data = [];
+
+        for (let i in interval) {
+
+            let getOrderExecuted = await OrderExecuted.find({ pair: pairId, blockTimestamp: { $gte: Date.now() - interval[i] } }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ fillAmount: 1, exchangeRate: 1, orderType: 1, _id: 0 }).lean();
+
+            let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
+
+            changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+
+            volume = Big(0);
+
+            if (i == 0) {
+
+                for (let i in getOrderExecuted) {
+                    volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
+                };
+
+                data.push({ volume24Hr: volume / 10 ** 18 });
+
+            }
+            let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
+
+            let temp = {
+                interval: `${intervalStr[i]}`,
+                changeInER: changeInER,
+            }
+
+            data.push(temp)
+
+        }
+
+        return res.status(200).send({ status: true, data: data });
+
+
+    }
+    catch (error) {
+        console.log("Error @ getPairTradingStatus", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+};
+
+async function getMatchedMarketOrders(req,res){
+    try{
+
+        let pairId = req.params.pairId;
+        let orderType = req.query.order_type;
+        let amount = Number(req.query.amount);
+
+        if(isNaN == true || amount <= 0){
+            return res.status(400).send({ status: true, message: `${amount} please provide valid amount` });
+        }
+
+        let getMatchedDoc;
+        if (orderType == '1') {
+            getMatchedDoc = await OrderCreated.find({ pair: pairId , orderType: '0' }).sort({ exchangeRate: 1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
+        }
+        else if (orderType == '0') {
+            getMatchedDoc = await OrderCreated.find({ pair: pairId, orderType: '1' }).sort({ exchangeRate: -1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
+        }
+
+        let data = [];
+        let currAmount = 0
+        for (let i in getMatchedDoc) {
+
+            if (currAmount >= amount) {
+                break;
+            }
+
+            currAmount += Number(getMatchedDoc[i].amount);
+            data.push(getMatchedDoc[i]);
+
+        }
+
+        return res.status(200).send({ status: true, data: data });
+    }
+    catch (error) {
+        console.log("Error @ getMatchedMarketOrders", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
 }
 
 
-module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory };
+
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory, getPairTradingStatus, getMatchedMarketOrders };
 
 
 // let data = [
