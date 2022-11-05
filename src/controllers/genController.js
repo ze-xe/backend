@@ -322,7 +322,8 @@ async function getPairPriceTrend(req, res) {
             return res.status(200).send({ status: true, data : [] });
         }
 
-        let result = [];
+        let exchangeRatesTrend = [];
+        let volumeTrend = [];
 
         let min = Infinity;
         let max = 0;
@@ -359,7 +360,8 @@ async function getPairPriceTrend(req, res) {
                         // timeE: endTimestamp,
                         // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
-                    result.push(temp);
+                    exchangeRatesTrend.push(temp);
+                    volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()})
 
                 }
             }
@@ -374,7 +376,8 @@ async function getPairPriceTrend(req, res) {
                     // timeE: endTimestamp,
                     // volume: Big(volume).div(Big(10).pow(18)).toString()
                 }
-                result.push(temp);
+                exchangeRatesTrend.push(temp);
+                volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()});
 
                 min = data[i].exchangeRate;
                 max = data[i].exchangeRate;
@@ -404,13 +407,18 @@ async function getPairPriceTrend(req, res) {
                         // timeE: endTimestamp,
                         // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
-                    result.push(temp);
+                    exchangeRatesTrend.push(temp);
+                    volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()});
 
                 }
 
             }
         };
-        console.log("res", result)
+        
+        let result = {
+            exchangeRate : exchangeRatesTrend,
+            volume : volumeTrend
+        }
         return res.status(200).send({ status: true, data: result });
     }
 
@@ -418,7 +426,12 @@ async function getPairPriceTrend(req, res) {
         console.log("Error @ getPriceDetails", error);
         return res.status(500).send({ status: false, error: error.message });
     }
-}
+};
+
+
+// async function getUserPlacedOrders(){
+
+// }
 
 
 
