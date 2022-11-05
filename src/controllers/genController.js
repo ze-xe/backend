@@ -1,4 +1,4 @@
-const { PairCreated, Token, connect, OrderCreated, OrderExecuted, TokenDeposited, TokenWithdrawn } = require("../db");
+const { PairCreated, Token, connect, OrderCreated, OrderExecuted, TokenDeposited, TokenWithdrawn, OrderCancelled } = require("../db");
 const Big = require('big.js');
 
 
@@ -561,20 +561,20 @@ async function getPairTradingStatus(req, res) {
     }
 };
 
-async function getMatchedMarketOrders(req,res){
-    try{
+async function getMatchedMarketOrders(req, res) {
+    try {
 
         let pairId = req.params.pairId;
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
-        if(isNaN == true || amount <= 0){
+        if (isNaN == true || amount <= 0) {
             return res.status(400).send({ status: true, message: `${amount} please provide valid amount` });
         }
 
         let getMatchedDoc;
         if (orderType == '1') {
-            getMatchedDoc = await OrderCreated.find({ pair: pairId , orderType: '0' }).sort({ exchangeRate: 1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
+            getMatchedDoc = await OrderCreated.find({ pair: pairId, orderType: '0' }).sort({ exchangeRate: 1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
         }
         else if (orderType == '0') {
             getMatchedDoc = await OrderCreated.find({ pair: pairId, orderType: '1' }).sort({ exchangeRate: -1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
@@ -601,9 +601,24 @@ async function getMatchedMarketOrders(req,res){
     }
 }
 
+async function getOrderCancelled(req, res) {
+    try {
+        let pairId = req.params.pairId;
+        let maker = req.params.maker;
+
+        let getOrderCancelledDoc = await OrderCancelled.find({ maker: maker, pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ amount: 1, exchangeRate: 1, orderType: 1, _id: 0 }).lean()
+
+        return res.status(200).send({ status: true, data: getOrderCancelledDoc })
+    }
+    catch (error) {
+        console.log("Error @ getMatchedMarketOrders", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+}
 
 
-module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory, getPairTradingStatus, getMatchedMarketOrders };
+
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory, getPairTradingStatus, getMatchedMarketOrders, getOrderCancelled };
 
 
 // let data = [
