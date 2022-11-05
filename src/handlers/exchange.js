@@ -154,7 +154,8 @@ async function handleOrderExecuted(data, argument) {
 
         argument.exchangeRate = getOrderDetails.exchangeRate;
         argument.pair = getOrderDetails.pair;
-        argument.exchangeRateDecimals = Number(getPairDetails.exchangeRateDecimals)
+        argument.exchangeRateDecimals = Number(getPairDetails.exchangeRateDecimals);
+        argument.orderType = getOrderDetails.orderType;
 
         OrderExecuted.create(argument);
 

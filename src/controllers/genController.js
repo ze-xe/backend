@@ -1,4 +1,4 @@
-const { PairCreated, Token, connect, OrderCreated, OrderExecuted } = require("../db");
+const { PairCreated, Token, connect, OrderCreated, OrderExecuted, TokenDeposited, TokenWithdrawn } = require("../db");
 const Big = require('big.js');
 
 
@@ -319,7 +319,7 @@ async function getPairPriceTrend(req, res) {
             if (!isPairExist) {
                 return res.status(400).send({ status: false, message: `pairId ${pairId} does not exist` });
             }
-            return res.status(200).send({ status: true, data : [] });
+            return res.status(200).send({ status: true, data: [] });
         }
 
         let exchangeRatesTrend = [];
@@ -352,32 +352,32 @@ async function getPairPriceTrend(req, res) {
                 if (i == data.length - 1) {
 
                     let temp = {
-                        time: currTimestamp/1000,
-                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                        time: currTimestamp / 1000,
+                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         // timeE: endTimestamp,
                         // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
                     exchangeRatesTrend.push(temp);
-                    volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()})
+                    volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() })
 
                 }
             }
             else {
 
                 let temp = {
-                    time: currTimestamp/1000,
-                    open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                    time: currTimestamp / 1000,
+                    open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                    low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     // timeE: endTimestamp,
                     // volume: Big(volume).div(Big(10).pow(18)).toString()
                 }
                 exchangeRatesTrend.push(temp);
-                volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()});
+                volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
 
                 min = data[i].exchangeRate;
                 max = data[i].exchangeRate;
@@ -399,25 +399,25 @@ async function getPairPriceTrend(req, res) {
                     //     volume: Big(volume).div(Big(10).pow(18)).toString()
                     // }
                     let temp = {
-                        time: currTimestamp/1000,
-                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(), 
+                        time: currTimestamp / 1000,
+                        open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),  
+                        low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         // timeE: endTimestamp,
                         // volume: Big(volume).div(Big(10).pow(18)).toString()
                     }
                     exchangeRatesTrend.push(temp);
-                    volumeTrend.push({time : currTimestamp/1000 , value : Big(volume).div(Big(10).pow(18)).toString()});
+                    volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
 
                 }
 
             }
         };
-        
+
         let result = {
-            exchangeRate : exchangeRatesTrend,
-            volume : volumeTrend
+            exchangeRate: exchangeRatesTrend,
+            volume: volumeTrend
         }
         return res.status(200).send({ status: true, data: result });
     }
@@ -429,13 +429,83 @@ async function getPairPriceTrend(req, res) {
 };
 
 
-// async function getUserPlacedOrders(){
+async function getUserPlacedOrders(req, res) {
 
-// }
+    try {
+
+        let maker = req.params.maker;
+        let pairId = req.params.pairId;
+
+        const getMakerOrders = await OrderCreated.find({ maker: maker, pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ orderType: 1, exchangeRate: 1, amount: 1, _id: 0, id: 1 }).lean()
+
+        return res.status(200).send({ status: true, data: getMakerOrders });
+    }
+    catch (error) {
+        console.log("Error @ getUserPlacedOrders", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
 
 
+}
 
-module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend };
+async function getUserOrderHistory(req, res) {
+    try {
+
+        let taker = req.params.taker;
+        let pairId = req.params.pairId;
+
+        const getOrderHistory = await OrderExecuted.find({ taker: taker, pair: pairId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ orderType: 1, exchangeRate: 1, fillAmount: 1, _id: 0 }).lean()
+
+        return res.status(200).send({ status: true, data: getOrderHistory });
+    }
+    catch (error) {
+        console.log("Error @ getUserOrderHistory", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+};
+
+async function userDepositsAndWithdraws(req, res) {
+
+    try {
+
+        let userId = req.params.id;
+
+        let deposits = TokenDeposited.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).lean();
+        let withdraws = TokenWithdrawn.find({ id: userId }).sort({ blockTimestamp: -1, createdAt: -1 }).select({ token: 1, amount: 1, _id: 0, blockTimestamp: 1, txnId: 1 }).lean();
+
+        let promise = await Promise.all([deposits, withdraws]);
+
+        let data = {
+            deposits: promise[0],
+            withdraws: promise[1]
+        };
+
+        return res.status(200).send({ status: true, data: data });
+    }
+    catch (error) {
+        console.log("Error @ userDepositsAndWithdraws", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+};
+
+async function getPairOrderExecutedHistory(req, res) {
+    try {
+
+        let pairId = req.params.id;
+
+        let getPairOrderHistory = await OrderExecuted.find({pair : pairId}).sort({ blockTimestamp: -1, createdAt: -1}).select({fillAmount: 1, exchangeRate : 1, orderType : 1, _id : 0}).lean();
+
+        return res.status(200).send({ status: true, data: getPairOrderHistory });
+
+    }
+    catch (error) {
+        console.log("Error @ getPairOrderExecutedHistory", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+}
+
+
+module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory };
 
 
 // let data = [

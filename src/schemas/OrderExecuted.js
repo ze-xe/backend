@@ -9,7 +9,8 @@ const OrderExecutedSchema = new mongoose.Schema({
     fillAmount : String,
     pair : String,
     exchangeRate : Number,
-    exchangeRateDecimals : Number
+    exchangeRateDecimals : Number,
+    orderType: String
     
    
 },
