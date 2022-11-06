@@ -528,14 +528,17 @@ async function getPairTradingStatus(req, res) {
             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
 
             if(getOrderExecuted.length <= 0){
-
+                if(i == 0){
+                    data.push({ volume24Hr: 0 });
+                }
+               
                 let temp = {
                     interval: `${intervalStr[i]}`,
                     changeInER: 0,
                 }
     
                 data.push(temp);
-                data.push({ volume24Hr: 0 });
+              
             }
             else{
 
@@ -577,83 +580,90 @@ async function getPairTradingStatus(req, res) {
         return res.status(500).send({ status: false, error: error.message });
     }
 };
-async function _getPairTradingStatus(req, res) {
+// async function _getPairTradingStatus(req, res) {
 
-    try {
-        await connect()
-        // let pairId = req.params.pairId;
-        let pairId = "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032";
+//     try {
+//         await connect()
+//         // let pairId = req.params.pairId;
+//         let pairId = "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032";
 
-        let _24hr = 24 * 60 * 60 * 1000;
-        let _7D = 7 * _24hr;
-        let _30D = 30 * _24hr;
-        let _90D = 3 * _30D;
-        let _1Yr = 365 * _24hr;
+//         let _24hr = 24 * 60 * 60 * 1000;
+//         let _7D = 7 * _24hr;
+//         let _30D = 30 * _24hr;
+//         let _90D = 3 * _30D;
+//         let _1Yr = 365 * _24hr;
 
-        interval = [_24hr, _7D, _30D, _90D, _1Yr];
-        // interval = [_24hr];
+//         // interval = [_24hr, _7D, _30D, _90D, _1Yr];
+//         interval = [_24hr];
 
-        let data = [];
+//         let data = [];
 
-        for (let i in interval) {
+//         for (let i in interval) {
 
-            let getOrderExecuted = await OrderExecuted.aggregate(
-                [
-                    {
-                        $match: {
-                            $and: [
-                                {pair : pairId}, 
-                               { blockTimestamp: { $gte: Date.now() - interval[i] } }
-                            ]
-                        }
-                    },
-                    {
-                        $sort : {blockTimestamp : -1, createdAt : -1}
-                    },
-                    // {
-                    //     $
-                    // }
+//             let getOrderExecuted = await OrderExecuted.aggregate(
+//                 [
+//                     {
+//                         $match: {
+//                             $and: [
+//                                 {pair : pairId}, 
+//                                { blockTimestamp: { $gte: Date.now() - interval[i] } }
+//                             ]
+//                         }
+//                     },
+//                     {
+//                         $sort : {blockTimestamp : -1, createdAt : -1}
+//                     },
+//                     $addFields: {
+//                         amount: { $toInt: "$qty" },
+//                      }
+//                     {
+//                         $project : { fillAmount : parseInt("$fillAmount")}
+//                     },
+//                     {
+//                         $project : {volume : {$sum : "$fillAmount" }}
+//                     }
 
-                ]
-            );
+//                 ]
+//             );
 
-            // console.log(getOrderExecuted)
+//             console.log(getOrderExecuted)
+//             return
 
-            let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
+//             let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
 
-            changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+//             changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
 
-            volume = Big(0);
+//             volume = Big(0);
 
-            if (i == 0) {
+//             if (i == 0) {
 
-                for (let i in getOrderExecuted) {
-                    volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
-                };
+//                 for (let i in getOrderExecuted) {
+//                     volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
+//                 };
 
-                data.push({ volume24Hr: volume / 10 ** 18 });
+//                 data.push({ volume24Hr: volume / 10 ** 18 });
 
-            }
-            let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
+//             }
+//             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
 
-            let temp = {
-                interval: `${intervalStr[i]}`,
-                changeInER: changeInER,
-            }
+//             let temp = {
+//                 interval: `${intervalStr[i]}`,
+//                 changeInER: changeInER,
+//             }
 
-            data.push(temp)
+//             data.push(temp)
 
-        }
+//         }
 
-        // return res.status(200).send({ status: true, data: data });
-        console.log(data)
+//         // return res.status(200).send({ status: true, data: data });
+//         console.log(data)
 
-    }
-    catch (error) {
-        console.log("Error @ getPairTradingStatus", error);
-        // return res.status(500).send({ status: false, error: error.message });
-    }
-};
+//     }
+//     catch (error) {
+//         console.log("Error @ getPairTradingStatus", error);
+//         // return res.status(500).send({ status: false, error: error.message });
+//     }
+// };
 
 // _getPairTradingStatus()
 
