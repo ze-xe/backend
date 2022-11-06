@@ -150,6 +150,10 @@ async function handleOrderExecuted(data, argument) {
 
         let getOrderDetails = await OrderCreated.findOne({ id: id });
 
+        if(!getOrderDetails){
+            return console.log("OrderId not found, can not execute--------------------------------------------Error need to fix", id)
+        }
+
         let getPairDetails = await PairCreated.findOne({ id: getOrderDetails.pair });
 
         argument.exchangeRate = getOrderDetails.exchangeRate;
