@@ -505,7 +505,7 @@ async function getPairOrderExecutedHistory(req, res) {
 };
 
 
-async function getPairTradingStatus(req, res) {
+async function _getPairTradingStatus(req, res) {
 
     try {
 
@@ -527,48 +527,48 @@ async function getPairTradingStatus(req, res) {
 
             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
 
-            if(getOrderExecuted.length <= 0){
-                if(i == 0){
+            if (getOrderExecuted.length <= 0) {
+                if (i == 0) {
                     data.push({ volume24Hr: 0 });
                 }
-               
+
                 let temp = {
                     interval: `${intervalStr[i]}`,
                     changeInER: 0,
                 }
-    
+
                 data.push(temp);
-              
+
             }
-            else{
+            else {
 
                 let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
 
-            changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+                changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
 
-            volume = Big(0);
+                volume = Big(0);
 
-            if (i == 0) {
+                if (i == 0) {
 
-                for (let i in getOrderExecuted) {
-                    volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
-                };
+                    for (let i in getOrderExecuted) {
+                        volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
+                    };
 
-                data.push({ volume24Hr: volume / 10 ** 18 });
+                    data.push({ volume24Hr: volume / 10 ** 18 });
+
+                }
+
+
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: changeInER,
+                }
+
+                data.push(temp)
 
             }
-           
 
-            let temp = {
-                interval: `${intervalStr[i]}`,
-                changeInER: changeInER,
-            }
 
-            data.push(temp)
-
-            }
-
-            
         }
 
         return res.status(200).send({ status: true, data: data });
@@ -580,92 +580,111 @@ async function getPairTradingStatus(req, res) {
         return res.status(500).send({ status: false, error: error.message });
     }
 };
-// async function _getPairTradingStatus(req, res) {
 
-//     try {
-//         await connect()
-//         // let pairId = req.params.pairId;
-//         let pairId = "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032";
+async function getPairTradingStatus(req, res) {
 
-//         let _24hr = 24 * 60 * 60 * 1000;
-//         let _7D = 7 * _24hr;
-//         let _30D = 30 * _24hr;
-//         let _90D = 3 * _30D;
-//         let _1Yr = 365 * _24hr;
+    try {
+       
+        let pairId = req.params.pairId;
+      
+        let _24hr = 24 * 60 * 60 * 1000;
+        let _7D = 7 * _24hr;
+        let _30D = 30 * _24hr;
+        let _90D = 3 * _30D;
+        let _1Yr = 365 * _24hr;
 
-//         // interval = [_24hr, _7D, _30D, _90D, _1Yr];
-//         interval = [_24hr];
+        interval = [_24hr, _7D, _30D, _90D, _1Yr];
+        
+        let data = [];
 
-//         let data = [];
+        for (let i in interval) {
 
-//         for (let i in interval) {
+            let getOrderExecuted = await OrderExecuted.aggregate(
+                [
+                    {
+                        $match: {
+                            $and: [
+                                { pair: pairId },
+                                { blockTimestamp: { $gte: Date.now() - interval[i] } }
+                            ]
+                        }
+                    },
+                    {
+                        $sort: { blockTimestamp: -1, createdAt: -1 }
+                    },
+                    {
+                        $addFields: {
+                            amount: { $toDecimal: "$fillAmount" },
+                        }
+                    },
+                    {
+                        $facet: {
 
-//             let getOrderExecuted = await OrderExecuted.aggregate(
-//                 [
-//                     {
-//                         $match: {
-//                             $and: [
-//                                 {pair : pairId}, 
-//                                { blockTimestamp: { $gte: Date.now() - interval[i] } }
-//                             ]
-//                         }
-//                     },
-//                     {
-//                         $sort : {blockTimestamp : -1, createdAt : -1}
-//                     },
-//                     $addFields: {
-//                         amount: { $toInt: "$qty" },
-//                      }
-//                     {
-//                         $project : { fillAmount : parseInt("$fillAmount")}
-//                     },
-//                     {
-//                         $project : {volume : {$sum : "$fillAmount" }}
-//                     }
+                            "exchangeRate": [
+                                {
+                                    $group: {
+                                        _id: null,
+                                        first : {$first : "$exchangeRate" },
+                                        last : {$last : "$exchangeRate"}
 
-//                 ]
-//             );
+                                    }
+                                },
+                                { $project: { first: 1, last:1 , _id : 0} }
+                            ],
+                            "volume": [
+                                {
+                                    $group: {
+                                        _id: null,
+                                        volume: { $sum: "$amount" },
+                                        count: { $sum: 1 }
+                                    }
+                                }
+                            ]
+                        }
+                    }
 
-//             console.log(getOrderExecuted)
-//             return
+                ]
+            );
+            let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"];
 
-//             let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
+            if (getOrderExecuted[0].exchangeRate.length <= 0) {
+            
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: 0,
+                    volume : 0
+                }
 
-//             changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+                data.push(temp);
 
-//             volume = Big(0);
+            }
+            else{
+                let changeInER = getOrderExecuted[0].exchangeRate[0].first - getOrderExecuted[0].exchangeRate[0].last;
 
-//             if (i == 0) {
+                changeInER = (changeInER /  getOrderExecuted[0].exchangeRate[0].last) * 100
+    
+               let volume = Number(getOrderExecuted[0].volume[0].volume) / 10**18;
+    
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: changeInER,
+                    volume : volume
+                }
+    
+                data.push(temp)
+            }
 
-//                 for (let i in getOrderExecuted) {
-//                     volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
-//                 };
+        }
 
-//                 data.push({ volume24Hr: volume / 10 ** 18 });
+        return res.status(200).send({ status: true, data: data });
 
-//             }
-//             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
+    }
+    catch (error) {
+        console.log("Error @ getPairTradingStatus", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+};
 
-//             let temp = {
-//                 interval: `${intervalStr[i]}`,
-//                 changeInER: changeInER,
-//             }
-
-//             data.push(temp)
-
-//         }
-
-//         // return res.status(200).send({ status: true, data: data });
-//         console.log(data)
-
-//     }
-//     catch (error) {
-//         console.log("Error @ getPairTradingStatus", error);
-//         // return res.status(500).send({ status: false, error: error.message });
-//     }
-// };
-
-// _getPairTradingStatus()
 
 async function getMatchedMarketOrders(req, res) {
     try {
