@@ -15,7 +15,6 @@ async function getAllPairDetails(req, res) {
 
         for (let i in allPairs) {
 
-
             let token0 = Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             let token1 = Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             promiseTokens.push(token0, token1)
@@ -266,7 +265,27 @@ async function getMatchedOrders(req, res) {
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
+        if (!pairId) {
+            return res.status(400).send({ status: false, message: "Please provide pairId" });
+        };
 
+        if(!exchangeRate || isNaN(Number(exchangeRate))) {
+            return res.status(400).send({ status: false, message: "Please provide valiid exchangeRate" });
+        };
+        
+        if( !orderType || (orderType != '0' && orderType != '1' )){
+            return res.status(400).send({ status: false, message: "Please provide valid orderType" });
+        }
+
+        if(!amount || isNaN(amount) == true){
+            return res.status(400).send({ status: false, message: "Please provide valid amount" });
+        }
+
+        const isPairIdExist = await PairCreated.findOne({ id: pairId });
+
+        if (!isPairIdExist) {
+            return res.status(404).send({ status: false, message: "Please provide valid pairId" });
+        }
 
         let getMatchedDoc;
         if (orderType == '1') {
@@ -275,7 +294,6 @@ async function getMatchedOrders(req, res) {
         else if (orderType == '0') {
             getMatchedDoc = await OrderCreated.find({ pair: pairId, exchangeRate: { $gte: Number(exchangeRate) }, orderType: '1' }).sort({ exchangeRate: -1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
         }
-
 
         let data = [];
         let currAmount = 0
@@ -306,7 +324,7 @@ async function getPairPriceTrend(req, res) {
         let pairId = req.params.pairId;
         let interval = Number(req.query.interval);
 
-        if (isNaN(interval) == true || interval < 60000) {
+        if (isNaN(interval) == true || interval < 300000) {
             return res.status(400).send({ status: false, message: `interval ${interval} must be valid number greater than 300000` });
         }
 
@@ -373,8 +391,7 @@ async function getPairPriceTrend(req, res) {
                     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    // timeE: endTimestamp,
-                    // volume: Big(volume).div(Big(10).pow(18)).toString()
+                    
                 }
                 exchangeRatesTrend.push(temp);
                 volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -389,23 +406,13 @@ async function getPairPriceTrend(req, res) {
 
                 if (i == data.length - 1) {
 
-                    // let temp = {
-                    //     open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     timeS: currTimestamp,
-                    //     timeE: endTimestamp,
-                    //     volume: Big(volume).div(Big(10).pow(18)).toString()
-                    // }
                     let temp = {
                         time: currTimestamp / 1000,
                         open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        // timeE: endTimestamp,
-                        // volume: Big(volume).div(Big(10).pow(18)).toString()
+                       
                     }
                     exchangeRatesTrend.push(temp);
                     volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -444,7 +451,6 @@ async function getUserPlacedOrders(req, res) {
         console.log("Error @ getUserPlacedOrders", error);
         return res.status(500).send({ status: false, error: error.message });
     }
-
 
 }
 
@@ -584,9 +590,9 @@ async function _getPairTradingStatus(req, res) {
 async function getPairTradingStatus(req, res) {
 
     try {
-       
+
         let pairId = req.params.pairId;
-      
+
         let _24hr = 24 * 60 * 60 * 1000;
         let _7D = 7 * _24hr;
         let _30D = 30 * _24hr;
@@ -594,7 +600,7 @@ async function getPairTradingStatus(req, res) {
         let _1Yr = 365 * _24hr;
 
         interval = [_24hr, _7D, _30D, _90D, _1Yr];
-        
+
         let data = [];
 
         for (let i in interval) {
@@ -624,12 +630,12 @@ async function getPairTradingStatus(req, res) {
                                 {
                                     $group: {
                                         _id: null,
-                                        first : {$first : "$exchangeRate" },
-                                        last : {$last : "$exchangeRate"}
+                                        first: { $first: "$exchangeRate" },
+                                        last: { $last: "$exchangeRate" }
 
                                     }
                                 },
-                                { $project: { first: 1, last:1 , _id : 0} }
+                                { $project: { first: 1, last: 1, _id: 0 } }
                             ],
                             "volume": [
                                 {
@@ -648,29 +654,29 @@ async function getPairTradingStatus(req, res) {
             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"];
 
             if (getOrderExecuted[0].exchangeRate.length <= 0) {
-            
+
                 let temp = {
                     interval: `${intervalStr[i]}`,
                     changeInER: 0,
-                    volume : 0
+                    volume: 0
                 }
 
                 data.push(temp);
 
             }
-            else{
+            else {
                 let changeInER = getOrderExecuted[0].exchangeRate[0].first - getOrderExecuted[0].exchangeRate[0].last;
 
-                changeInER = (changeInER /  getOrderExecuted[0].exchangeRate[0].last) * 100
-    
-               let volume = Number(getOrderExecuted[0].volume[0].volume) / 10**18;
-    
+                changeInER = (changeInER / getOrderExecuted[0].exchangeRate[0].last) * 100
+
+                let volume = Number(getOrderExecuted[0].volume[0].volume) / 10 ** 18;
+
                 let temp = {
                     interval: `${intervalStr[i]}`,
                     changeInER: changeInER,
-                    volume : volume
+                    volume: volume
                 }
-    
+
                 data.push(temp)
             }
 
@@ -693,7 +699,15 @@ async function getMatchedMarketOrders(req, res) {
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
-        if (isNaN == true || amount <= 0) {
+        if (!pairId) {
+            return res.status(400).send({ status: false, message: "Please provide pairId" });
+        };
+        
+        if( !orderType || (orderType != '0' && orderType != '1' )){
+            return res.status(400).send({ status: false, message: "Please provide valid orderType" });
+        }
+
+        if (isNaN(amount) == true || amount <= 0) {
             return res.status(400).send({ status: true, message: `${amount} please provide valid amount` });
         }
 
