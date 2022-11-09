@@ -269,15 +269,15 @@ async function getMatchedOrders(req, res) {
             return res.status(400).send({ status: false, message: "Please provide pairId" });
         };
 
-        if(!exchangeRate || isNaN(Number(exchangeRate))) {
+        if (!exchangeRate || isNaN(Number(exchangeRate))) {
             return res.status(400).send({ status: false, message: "Please provide valiid exchangeRate" });
         };
-        
-        if( !orderType || (orderType != '0' && orderType != '1' )){
+
+        if (!orderType || (orderType != '0' && orderType != '1')) {
             return res.status(400).send({ status: false, message: "Please provide valid orderType" });
         }
 
-        if(!amount || isNaN(amount) == true){
+        if (!amount || isNaN(amount) == true) {
             return res.status(400).send({ status: false, message: "Please provide valid amount" });
         }
 
@@ -296,11 +296,15 @@ async function getMatchedOrders(req, res) {
         }
 
         let data = [];
-        let currAmount = 0
+        let currAmount = 0;
+        let counter = 0;
         for (let i in getMatchedDoc) {
 
             if (currAmount >= amount) {
-                break;
+                counter++;
+                if (counter > 10) {
+                    break;
+                }
             }
 
             currAmount += Number(getMatchedDoc[i].amount);
@@ -391,7 +395,7 @@ async function getPairPriceTrend(req, res) {
                     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    
+
                 }
                 exchangeRatesTrend.push(temp);
                 volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -412,7 +416,7 @@ async function getPairPriceTrend(req, res) {
                         high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                       
+
                     }
                     exchangeRatesTrend.push(temp);
                     volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -702,8 +706,8 @@ async function getMatchedMarketOrders(req, res) {
         if (!pairId) {
             return res.status(400).send({ status: false, message: "Please provide pairId" });
         };
-        
-        if( !orderType || (orderType != '0' && orderType != '1' )){
+
+        if (!orderType || (orderType != '0' && orderType != '1')) {
             return res.status(400).send({ status: false, message: "Please provide valid orderType" });
         }
 
@@ -760,83 +764,3 @@ async function getOrderCancelled(req, res) {
 module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory, getPairTradingStatus, getMatchedMarketOrders, getOrderCancelled };
 
 
-// let data = [
-//     {
-//         exchangeRate: 1500,
-//         pair: "abc",
-//         amount: 200,
-//         timestamp: 1667462562000
-//     },
-//     {
-//         exchangeRate: 1510,
-//         pair: "abc",
-//         amount: 10,
-//         timestamp: 1667462622000
-//     },
-//     {
-//         exchangeRate: 1505,
-//         pair: "abc",
-//         amount: 20,
-//         timestamp: 1667462682000
-//     },
-//     {
-//         exchangeRate: 1490,
-//         pair: "abc",
-//         amount: 50,
-//         timestamp: 1667462742000
-//     },
-//     {
-//         exchangeRate: 1550,
-//         pair: "abc",
-//         amount: 30,
-//         timestamp: 1667462802000
-//     },
-//     {
-//         exchangeRate: 1510,
-//         pair: "abc",
-//         amount: 40,
-//         timestamp: 1667462862000
-//     },
-//     {
-//         exchangeRate: 1530,
-//         pair: "abc",
-//         amount: 50,
-//         timestamp: 1667462922000
-//     },
-//     {
-//         exchangeRate: 1480,
-//         pair: "abc",
-//         amount: 70,
-//         timestamp: 1667462982000
-//     },
-//     {
-//         exchangeRate: 1495,
-//         pair: "abc",
-//         amount: 85,
-//         timestamp: 1667463042000
-//     },
-//     {
-//         exchangeRate: 1515,
-//         pair: "abc",
-//         amount: 95,
-//         timestamp: 1667463102000
-//     },
-//     {
-//         exchangeRate: 1503,
-//         pair: "abc",
-//         amount: 5,
-//         timestamp: 1667463162000
-//     },
-//     {
-//         exchangeRate: 1509,
-//         pair: "abc",
-//         amount: 15,
-//         timestamp: 1667463222000
-//     },
-//     {
-//         exchangeRate: 1520,
-//         pair: "abc",
-//         amount: 2,
-//         timestamp: 1667463282000
-//     },
-// ]
