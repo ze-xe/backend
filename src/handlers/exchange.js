@@ -361,7 +361,7 @@ async function handleOrderUpdated(data, argument) {
             return
         }
 
-        let getOrderDoc = await OrderCreated.findOne({ id: data[0] });
+        let getOrderDoc = await OrderCreated.findOne({ id: tronWeb.address.fromHex(data[1]) });
 
         if (!getOrderDoc) {
             return
@@ -380,7 +380,7 @@ async function handleOrderUpdated(data, argument) {
                 orderType: getOrderDoc.orderType,
             });
             await OrderCreated.deleteOne({ _id: getOrderDoc._id.toString() });
-            console.log("Order cancelled", data[1], data[0])
+            console.log("Order cancelled", data[1], tronWeb.address.fromHex(data[1]))
             return
         }
 
@@ -395,7 +395,7 @@ async function handleOrderUpdated(data, argument) {
                 }
             }
         )
-        console.log("Order Updated", data[1], data[0])
+        console.log("Order Updated", data[1], tronWeb.address.fromHex(data[1]))
 
     }
     catch (error) {

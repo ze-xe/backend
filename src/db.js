@@ -25,15 +25,6 @@ const OrderCancelled = mongoose.model("OrderCancelled", OrderCancelledSchema)
 
 require("dotenv").config();
 
-// async function connect() {
-//     console.log(process.env.MONGO_URL);
-//     mongoose.connect(process.env.MONGO_URL, {
-//     useNewUrlParser: true
-// }) .then(() => console.log("MongoDb is connected"))
-// .catch(err => console.log(err))
-
-// }
-
 
 async function connect() {
 

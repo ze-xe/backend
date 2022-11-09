@@ -15,7 +15,6 @@ async function getAllPairDetails(req, res) {
 
         for (let i in allPairs) {
 
-
             let token0 = Token.findOne({ id: allPairs[i].token0 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             let token1 = Token.findOne({ id: allPairs[i].token1 }).select({ name: 1, symbol: 1, decimals: 1, _id: 0, id: 1 }).lean();
             promiseTokens.push(token0, token1)
@@ -266,7 +265,27 @@ async function getMatchedOrders(req, res) {
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
+        if (!pairId) {
+            return res.status(400).send({ status: false, message: "Please provide pairId" });
+        };
 
+        if (!exchangeRate || isNaN(Number(exchangeRate))) {
+            return res.status(400).send({ status: false, message: "Please provide valiid exchangeRate" });
+        };
+
+        if (!orderType || (orderType != '0' && orderType != '1')) {
+            return res.status(400).send({ status: false, message: "Please provide valid orderType" });
+        }
+
+        if (!amount || isNaN(amount) == true) {
+            return res.status(400).send({ status: false, message: "Please provide valid amount" });
+        }
+
+        const isPairIdExist = await PairCreated.findOne({ id: pairId });
+
+        if (!isPairIdExist) {
+            return res.status(404).send({ status: false, message: "Please provide valid pairId" });
+        }
 
         let getMatchedDoc;
         if (orderType == '1') {
@@ -276,13 +295,16 @@ async function getMatchedOrders(req, res) {
             getMatchedDoc = await OrderCreated.find({ pair: pairId, exchangeRate: { $gte: Number(exchangeRate) }, orderType: '1' }).sort({ exchangeRate: -1 }).select({ id: 1, amount: 1, exchangeRate: 1, _id: 0 }).lean();
         }
 
-
         let data = [];
-        let currAmount = 0
+        let currAmount = 0;
+        let counter = 0;
         for (let i in getMatchedDoc) {
 
             if (currAmount >= amount) {
-                break;
+                counter++;
+                if (counter > 10) {
+                    break;
+                }
             }
 
             currAmount += Number(getMatchedDoc[i].amount);
@@ -306,7 +328,7 @@ async function getPairPriceTrend(req, res) {
         let pairId = req.params.pairId;
         let interval = Number(req.query.interval);
 
-        if (isNaN(interval) == true || interval < 60000) {
+        if (isNaN(interval) == true || interval < 300000) {
             return res.status(400).send({ status: false, message: `interval ${interval} must be valid number greater than 300000` });
         }
 
@@ -373,8 +395,7 @@ async function getPairPriceTrend(req, res) {
                     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    // timeE: endTimestamp,
-                    // volume: Big(volume).div(Big(10).pow(18)).toString()
+
                 }
                 exchangeRatesTrend.push(temp);
                 volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -389,23 +410,13 @@ async function getPairPriceTrend(req, res) {
 
                 if (i == data.length - 1) {
 
-                    // let temp = {
-                    //     open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                    //     timeS: currTimestamp,
-                    //     timeE: endTimestamp,
-                    //     volume: Big(volume).div(Big(10).pow(18)).toString()
-                    // }
                     let temp = {
                         time: currTimestamp / 1000,
                         open: Big(open).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         high: Big(max).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         close: Big(close).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
                         low: Big(min).div(Big(10).pow(data[i].exchangeRateDecimals)).toString(),
-                        // timeE: endTimestamp,
-                        // volume: Big(volume).div(Big(10).pow(18)).toString()
+
                     }
                     exchangeRatesTrend.push(temp);
                     volumeTrend.push({ time: currTimestamp / 1000, value: Big(volume).div(Big(10).pow(18)).toString() });
@@ -444,7 +455,6 @@ async function getUserPlacedOrders(req, res) {
         console.log("Error @ getUserPlacedOrders", error);
         return res.status(500).send({ status: false, error: error.message });
     }
-
 
 }
 
@@ -505,7 +515,7 @@ async function getPairOrderExecutedHistory(req, res) {
 };
 
 
-async function getPairTradingStatus(req, res) {
+async function _getPairTradingStatus(req, res) {
 
     try {
 
@@ -527,48 +537,48 @@ async function getPairTradingStatus(req, res) {
 
             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
 
-            if(getOrderExecuted.length <= 0){
-                if(i == 0){
+            if (getOrderExecuted.length <= 0) {
+                if (i == 0) {
                     data.push({ volume24Hr: 0 });
                 }
-               
+
                 let temp = {
                     interval: `${intervalStr[i]}`,
                     changeInER: 0,
                 }
-    
+
                 data.push(temp);
-              
+
             }
-            else{
+            else {
 
                 let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
 
-            changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+                changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
 
-            volume = Big(0);
+                volume = Big(0);
 
-            if (i == 0) {
+                if (i == 0) {
 
-                for (let i in getOrderExecuted) {
-                    volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
-                };
+                    for (let i in getOrderExecuted) {
+                        volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
+                    };
 
-                data.push({ volume24Hr: volume / 10 ** 18 });
+                    data.push({ volume24Hr: volume / 10 ** 18 });
+
+                }
+
+
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: changeInER,
+                }
+
+                data.push(temp)
 
             }
-           
 
-            let temp = {
-                interval: `${intervalStr[i]}`,
-                changeInER: changeInER,
-            }
 
-            data.push(temp)
-
-            }
-
-            
         }
 
         return res.status(200).send({ status: true, data: data });
@@ -580,92 +590,111 @@ async function getPairTradingStatus(req, res) {
         return res.status(500).send({ status: false, error: error.message });
     }
 };
-// async function _getPairTradingStatus(req, res) {
 
-//     try {
-//         await connect()
-//         // let pairId = req.params.pairId;
-//         let pairId = "823ad15fe3eba6ca1c5da576cda7c4c18f28f5c9eaa23a54cc4c675641634032";
+async function getPairTradingStatus(req, res) {
 
-//         let _24hr = 24 * 60 * 60 * 1000;
-//         let _7D = 7 * _24hr;
-//         let _30D = 30 * _24hr;
-//         let _90D = 3 * _30D;
-//         let _1Yr = 365 * _24hr;
+    try {
 
-//         // interval = [_24hr, _7D, _30D, _90D, _1Yr];
-//         interval = [_24hr];
+        let pairId = req.params.pairId;
 
-//         let data = [];
+        let _24hr = 24 * 60 * 60 * 1000;
+        let _7D = 7 * _24hr;
+        let _30D = 30 * _24hr;
+        let _90D = 3 * _30D;
+        let _1Yr = 365 * _24hr;
 
-//         for (let i in interval) {
+        interval = [_24hr, _7D, _30D, _90D, _1Yr];
 
-//             let getOrderExecuted = await OrderExecuted.aggregate(
-//                 [
-//                     {
-//                         $match: {
-//                             $and: [
-//                                 {pair : pairId}, 
-//                                { blockTimestamp: { $gte: Date.now() - interval[i] } }
-//                             ]
-//                         }
-//                     },
-//                     {
-//                         $sort : {blockTimestamp : -1, createdAt : -1}
-//                     },
-//                     $addFields: {
-//                         amount: { $toInt: "$qty" },
-//                      }
-//                     {
-//                         $project : { fillAmount : parseInt("$fillAmount")}
-//                     },
-//                     {
-//                         $project : {volume : {$sum : "$fillAmount" }}
-//                     }
+        let data = [];
 
-//                 ]
-//             );
+        for (let i in interval) {
 
-//             console.log(getOrderExecuted)
-//             return
+            let getOrderExecuted = await OrderExecuted.aggregate(
+                [
+                    {
+                        $match: {
+                            $and: [
+                                { pair: pairId },
+                                { blockTimestamp: { $gte: Date.now() - interval[i] } }
+                            ]
+                        }
+                    },
+                    {
+                        $sort: { blockTimestamp: -1, createdAt: -1 }
+                    },
+                    {
+                        $addFields: {
+                            amount: { $toDecimal: "$fillAmount" },
+                        }
+                    },
+                    {
+                        $facet: {
 
-//             let changeInER = getOrderExecuted[0].exchangeRate - getOrderExecuted[getOrderExecuted.length - 1].exchangeRate;
+                            "exchangeRate": [
+                                {
+                                    $group: {
+                                        _id: null,
+                                        first: { $first: "$exchangeRate" },
+                                        last: { $last: "$exchangeRate" }
 
-//             changeInER = (changeInER / getOrderExecuted[getOrderExecuted.length - 1].exchangeRate) * 100
+                                    }
+                                },
+                                { $project: { first: 1, last: 1, _id: 0 } }
+                            ],
+                            "volume": [
+                                {
+                                    $group: {
+                                        _id: null,
+                                        volume: { $sum: "$amount" },
+                                        count: { $sum: 1 }
+                                    }
+                                }
+                            ]
+                        }
+                    }
 
-//             volume = Big(0);
+                ]
+            );
+            let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"];
 
-//             if (i == 0) {
+            if (getOrderExecuted[0].exchangeRate.length <= 0) {
 
-//                 for (let i in getOrderExecuted) {
-//                     volume = Big(volume).plus(getOrderExecuted[i].fillAmount).toString()
-//                 };
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: 0,
+                    volume: 0
+                }
 
-//                 data.push({ volume24Hr: volume / 10 ** 18 });
+                data.push(temp);
 
-//             }
-//             let intervalStr = ["_24hr", " _7D", " _30D", "_90D", " _1Yr"]
+            }
+            else {
+                let changeInER = getOrderExecuted[0].exchangeRate[0].first - getOrderExecuted[0].exchangeRate[0].last;
 
-//             let temp = {
-//                 interval: `${intervalStr[i]}`,
-//                 changeInER: changeInER,
-//             }
+                changeInER = (changeInER / getOrderExecuted[0].exchangeRate[0].last) * 100
 
-//             data.push(temp)
+                let volume = Number(getOrderExecuted[0].volume[0].volume) / 10 ** 18;
 
-//         }
+                let temp = {
+                    interval: `${intervalStr[i]}`,
+                    changeInER: changeInER,
+                    volume: volume
+                }
 
-//         // return res.status(200).send({ status: true, data: data });
-//         console.log(data)
+                data.push(temp)
+            }
 
-//     }
-//     catch (error) {
-//         console.log("Error @ getPairTradingStatus", error);
-//         // return res.status(500).send({ status: false, error: error.message });
-//     }
-// };
+        }
 
-// _getPairTradingStatus()
+        return res.status(200).send({ status: true, data: data });
+
+    }
+    catch (error) {
+        console.log("Error @ getPairTradingStatus", error);
+        return res.status(500).send({ status: false, error: error.message });
+    }
+};
+
 
 async function getMatchedMarketOrders(req, res) {
     try {
@@ -674,7 +703,15 @@ async function getMatchedMarketOrders(req, res) {
         let orderType = req.query.order_type;
         let amount = Number(req.query.amount);
 
-        if (isNaN == true || amount <= 0) {
+        if (!pairId) {
+            return res.status(400).send({ status: false, message: "Please provide pairId" });
+        };
+
+        if (!orderType || (orderType != '0' && orderType != '1')) {
+            return res.status(400).send({ status: false, message: "Please provide valid orderType" });
+        }
+
+        if (isNaN(amount) == true || amount <= 0) {
             return res.status(400).send({ status: true, message: `${amount} please provide valid amount` });
         }
 
@@ -687,11 +724,15 @@ async function getMatchedMarketOrders(req, res) {
         }
 
         let data = [];
-        let currAmount = 0
+        let currAmount = 0;
+        let counter = 0;
         for (let i in getMatchedDoc) {
 
             if (currAmount >= amount) {
-                break;
+                counter++;
+                if (counter > 10) {
+                    break;
+                }
             }
 
             currAmount += Number(getMatchedDoc[i].amount);
@@ -727,83 +768,3 @@ async function getOrderCancelled(req, res) {
 module.exports = { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairPriceTrend, getUserPlacedOrders, getUserOrderHistory, userDepositsAndWithdraws, getPairOrderExecutedHistory, getPairTradingStatus, getMatchedMarketOrders, getOrderCancelled };
 
 
-// let data = [
-//     {
-//         exchangeRate: 1500,
-//         pair: "abc",
-//         amount: 200,
-//         timestamp: 1667462562000
-//     },
-//     {
-//         exchangeRate: 1510,
-//         pair: "abc",
-//         amount: 10,
-//         timestamp: 1667462622000
-//     },
-//     {
-//         exchangeRate: 1505,
-//         pair: "abc",
-//         amount: 20,
-//         timestamp: 1667462682000
-//     },
-//     {
-//         exchangeRate: 1490,
-//         pair: "abc",
-//         amount: 50,
-//         timestamp: 1667462742000
-//     },
-//     {
-//         exchangeRate: 1550,
-//         pair: "abc",
-//         amount: 30,
-//         timestamp: 1667462802000
-//     },
-//     {
-//         exchangeRate: 1510,
-//         pair: "abc",
-//         amount: 40,
-//         timestamp: 1667462862000
-//     },
-//     {
-//         exchangeRate: 1530,
-//         pair: "abc",
-//         amount: 50,
-//         timestamp: 1667462922000
-//     },
-//     {
-//         exchangeRate: 1480,
-//         pair: "abc",
-//         amount: 70,
-//         timestamp: 1667462982000
-//     },
-//     {
-//         exchangeRate: 1495,
-//         pair: "abc",
-//         amount: 85,
-//         timestamp: 1667463042000
-//     },
-//     {
-//         exchangeRate: 1515,
-//         pair: "abc",
-//         amount: 95,
-//         timestamp: 1667463102000
-//     },
-//     {
-//         exchangeRate: 1503,
-//         pair: "abc",
-//         amount: 5,
-//         timestamp: 1667463162000
-//     },
-//     {
-//         exchangeRate: 1509,
-//         pair: "abc",
-//         amount: 15,
-//         timestamp: 1667463222000
-//     },
-//     {
-//         exchangeRate: 1520,
-//         pair: "abc",
-//         amount: 2,
-//         timestamp: 1667463282000
-//     },
-// ]
