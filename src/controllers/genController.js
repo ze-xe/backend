@@ -724,11 +724,15 @@ async function getMatchedMarketOrders(req, res) {
         }
 
         let data = [];
-        let currAmount = 0
+        let currAmount = 0;
+        let counter = 0;
         for (let i in getMatchedDoc) {
 
             if (currAmount >= amount) {
-                break;
+                counter++;
+                if (counter > 10) {
+                    break;
+                }
             }
 
             currAmount += Number(getMatchedDoc[i].amount);
