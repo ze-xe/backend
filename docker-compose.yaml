@@ -19,7 +19,7 @@ services:
     depends_on:
       - mongo
     ports:
-      - "7878:3030"
+      - "3010:3010"
     environment:
         - MONGO_URL=mongodb://root:password@mongo:27017/?authMechanism=DEFAULT
   #     - PORT=${PORT}
