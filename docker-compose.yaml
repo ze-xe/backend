@@ -9,8 +9,8 @@ services:
     volumes:
       - ./data/mongo:/data/db
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
   # Scorer Node
   api:
     build:
@@ -21,7 +21,7 @@ services:
     ports:
       - "3010:3010"
     environment:
-        - MONGO_URL=mongodb://root:password@mongo:27017/?authMechanism=DEFAULT
+        - MONGO_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/?authMechanism=DEFAULT
   #     - PORT=${PORT}
   #     - ANALYSER_PORT=${ANALYSER_PORT}
   #     - ANALYSER_SERVER_STRING=analyser

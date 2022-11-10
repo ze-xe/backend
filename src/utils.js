@@ -1,10 +1,12 @@
 const fs = require("fs");
 const TronWeb = require("tronweb");
 
+require("dotenv").config();
+
 const tronWeb = new TronWeb({
     fullHost: 'https://nile.trongrid.io',
-    headers: { "TRON-PRO-API-KEY": 'ebed0d4c-b125-4bea-97bd-9b4f70017593' },
-    privateKey: '2186285c3a8a291b6de53ea49b829bf55948c31b0eb2ae23cc77d441d2821fc1'
+    headers: { "TRON-PRO-API-KEY": process.env.TRON_PRO_API_KEY },
+    privateKey: process.env.TRON_PRIVATE_KEY
 });
 
 const exchangeDeployments = JSON.parse(fs.readFileSync(process.cwd() + `/abi/Exchange.json`));
