@@ -4,18 +4,18 @@ const { getAllPairDetails, fetchOrders, getAllTokens, getMatchedOrders, getPairP
 const router = express.Router();
 
 
-router.get("/allpairs", getAllPairDetails); //Ok
-router.get("/orders/:pairId", fetchOrders); //Ok
-router.get("/alltokens", getAllTokens); //Ok
-router.get("/matchedorders/:pairId", getMatchedOrders); //Ok
-router.get("/pair/pricetrend/:pairId", getPairPriceTrend); // Ok
-router.get("/orders_placed/:maker/:pairId", getUserPlacedOrders); //Ok
-router.get("/orders_history/:taker/:pairId", getUserOrderHistory); //Ok
-router.get("/user/deposits/withdraws/:id", userDepositsAndWithdraws); //Ok
-router.get("/pair/orders/history/:id", getPairOrderExecutedHistory); // ok
-router.get("/pair/trading/status/:pairId", getPairTradingStatus); //OK
-router.get("/market/matched/orders/:pairId", getMatchedMarketOrders); // Ok
-router.get("/user/order/cancelled/:maker/:pairId", getOrderCancelled)
+router.get("/allpairs", getAllPairDetails); //ok
+router.get("/orders/:pairId", fetchOrders); //ok
+router.get("/alltokens", getAllTokens); //ok
+router.get("/matchedorders/:pairId", getMatchedOrders);  //ok
+router.get("/pair/pricetrend/:pairId", getPairPriceTrend); //ok
+router.get("/orders_placed/:maker/:pairId", getUserPlacedOrders); // ok 
+router.get("/orders_history/:taker/:pairId", getUserOrderHistory); // ok
+router.get("/user/deposits/withdraws/:id", userDepositsAndWithdraws); //ok
+router.get("/pair/orders/history/:id", getPairOrderExecutedHistory);  //ok
+router.get("/pair/trading/status/:pairId", getPairTradingStatus); //ok
+router.get("/market/matched/orders/:pairId", getMatchedMarketOrders); //ok
+router.get("/user/order/cancelled/:maker/:pairId", getOrderCancelled);
 
 router.get('/', function(req , res) {
     res.send("hello world");
