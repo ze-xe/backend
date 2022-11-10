@@ -358,12 +358,14 @@ async function handleOrderUpdated(data, argument) {
         });
 
         if (isDuplicateTxn) {
-            return
+            console.log("Order Updated -- Duplicate transection" )
+            return 
         }
 
-        let getOrderDoc = await OrderCreated.findOne({ id: tronWeb.address.fromHex(data[1]) });
+        let getOrderDoc = await OrderCreated.findOne({ id: data[0] });
 
         if (!getOrderDoc) {
+            // console.log("Order updated Order not found", data[0])
             return
         };
 
@@ -380,7 +382,7 @@ async function handleOrderUpdated(data, argument) {
                 orderType: getOrderDoc.orderType,
             });
             await OrderCreated.deleteOne({ _id: getOrderDoc._id.toString() });
-            console.log("Order cancelled", data[1], tronWeb.address.fromHex(data[1]))
+            console.log("Order cancelled", data[1], data[0])
             return
         }
 
@@ -395,7 +397,7 @@ async function handleOrderUpdated(data, argument) {
                 }
             }
         )
-        console.log("Order Updated", data[1], tronWeb.address.fromHex(data[1]))
+        console.log("Order Updated", data[1], data[0])
 
     }
     catch (error) {
