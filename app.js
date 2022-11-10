@@ -6,11 +6,20 @@ const app = express();
 const routes = require('./src/routes/route');
 const { ExchangeConfig } = require('./src/sync/configs/exchange');
 const { VaultConfig } = require('./src/sync/configs/vault');
+const helmet = require("helmet");
+
+
+
 require("dotenv").config();
 
 
 connect();
-app.use(cors());
+app.use(cors(
+    {
+        origin: ['https://zexe.io']
+    }
+));
+app.use(helmet());
 app.use(express.json());
 
 app.use('/', routes);
