@@ -5,7 +5,8 @@ const UserPositionSchema = new mongoose.Schema({
     id : String,
     token : String,
     balance : String,
-    inOrderBalance : String
+    inOrderBalance : String,
+    chainId : Number
    
 },
 { timestamps: true }

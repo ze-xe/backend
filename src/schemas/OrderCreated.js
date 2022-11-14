@@ -10,6 +10,7 @@ const OrderCreatedSchema = new mongoose.Schema({
     amount : String,
     exchangeRate : Number,
     orderType : String,
+    chainId : Number,
    
 },
 { timestamps: true }

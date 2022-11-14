@@ -7,6 +7,7 @@ const TokenSchema = new mongoose.Schema({
     symbol : String,
     price : String,
     decimals :String,
+    chainId : Number
    
 },
 { timestamps: true }

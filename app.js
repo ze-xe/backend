@@ -1,7 +1,7 @@
 const express = require('express');
 const {connect} = require('./src/db');
 const cors = require('cors');
-const { syncAndListen, _syncAndListen } = require('./src/sync/sync');
+const { syncAndListen, syncAndListen1 } = require('./src/sync/sync');
 const app = express();
 const routes = require('./src/routes/route');
 const { ExchangeConfig } = require('./src/sync/configs/exchange');
@@ -15,8 +15,8 @@ app.use(express.json());
 
 app.use('/', routes);
 
-syncAndListen(ExchangeConfig);
-_syncAndListen(VaultConfig);
+syncAndListen(ExchangeConfig, "1313161555");
+syncAndListen1(VaultConfig, "1313161555");
 
 app.listen(process.env.PORT || 3010, function () {
     console.log('app running on port ' + (process.env.PORT || 3010));

@@ -7,7 +7,7 @@ const Big = require('big.js')
 async function handlePairCreated(data, argument) {
 
     try {
-
+        
         const isDuplicateTxn = await PairCreated.findOne({
             txnId: argument.txnId,
             blockNumber: argument.blockNumber,
@@ -19,16 +19,16 @@ async function handlePairCreated(data, argument) {
         }
 
         argument.id = data[0];
-        argument.token0 = tronWeb.address.fromHex(data[1]);
-        argument.token1 = tronWeb.address.fromHex(data[2]);
-        argument.exchangeRateDecimals = data[3];
-        argument.minToken0Order = data[4];
-        await handleToken(tronWeb.address.fromHex(data[1]));
-        await handleToken(tronWeb.address.fromHex(data[2]));
+        argument.token0 = data[1];
+        argument.token1 = data[2];
+        argument.exchangeRateDecimals = data[3].toString();
+        argument.minToken0Order = data[4].toString();
+        await handleToken(data[1], argument.chainId);
+        await handleToken(data[2], argument.chainId);
         argument.exchangeRate = 0;
         argument.priceDiff = 0;
         PairCreated.create(argument);
-        console.log("Pair Created", tronWeb.address.fromHex(data[1]), tronWeb.address.fromHex(data[2]))
+        console.log("Pair Created", data[1], data[2])
 
 
     }
@@ -57,15 +57,15 @@ async function handleOrderCreated(data, argument) {
 
         if (isDuplicateId) {
             let delteDuplicateOrder = await OrderCreated.deleteOne({ _id: isDuplicateId._id })
-            console.log("OrderDelete", tronWeb.address.fromHex(data[2]), data[3], data[1])
+            console.log("OrderDelete", data[2], data[3], data[1])
         }
 
         let id = data[0];
         let pair = data[1];
-        let maker = tronWeb.address.fromHex(data[2]);
+        let maker = data[2];
         let amount = Big(data[3]).toString();
-        let exchangeRate = data[4];
-        let orderType = data[5];
+        let exchangeRate = data[4].toString();
+        let orderType = data[5].toString();
         argument.id = id;
         argument.pair = pair;
         argument.maker = maker;
@@ -142,8 +142,8 @@ async function handleOrderExecuted(data, argument) {
         }
 
         let id = data[0];
-        let taker = tronWeb.address.fromHex(data[1]);
-        let fillAmount = data[2];
+        let taker = data[1];
+        let fillAmount = data[2].toString();
         argument.id = id;
         argument.taker = taker;
         argument.fillAmount = fillAmount;
@@ -354,7 +354,7 @@ async function handleOrderUpdated(data, argument) {
             txnId: argument.txnId,
             blockNumber: argument.blockNumber,
             blockTimestamp: argument.blockTimestamp,
-            amount: data[1]
+            amount: data[1].toString()
         });
 
         if (isDuplicateTxn) {
@@ -391,7 +391,7 @@ async function handleOrderUpdated(data, argument) {
                     txnId: argument.txnId,
                     blockNumber: argument.blockNumber,
                     blockTimestamp: argument.blockTimestamp,
-                    amount: data[1]
+                    amount: data[1].toString()
                 }
             }
         )

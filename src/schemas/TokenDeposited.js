@@ -6,7 +6,8 @@ const TokensDepositedSchema = new mongoose.Schema({
     blockTimestamp : String,  
     id : String,
     token : String,
-    amount : String
+    amount : String,
+    chainId : Number
    
 },
 { timestamps: true }

@@ -10,7 +10,8 @@ const PairCreatedSchema = new mongoose.Schema({
     exchangeRateDecimals : String,
     minToken0Order : String,
     exchangeRate : Number,
-    priceDiff : String
+    priceDiff : String,
+    chainId : Number
     
    
 },

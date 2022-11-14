@@ -6,7 +6,7 @@ const {handleTokenWithdrawn, handleTokenDeposited} = require('../../handlers/vau
 
 
 const VaultConfig = {
-    contractAddress: tronWeb.address.fromHex(getVaultAddress()),
+    contractAddress: getVaultAddress(),
     abi: getVaultABI(),
     handlers: {
         "TokenWithdrawn": handleTokenWithdrawn,

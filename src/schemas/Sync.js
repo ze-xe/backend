@@ -2,10 +2,11 @@ const mongoose = require("mongoose");
 
 const exchangeSyncSchema = new mongoose.Schema({
 
-    lastBlockTimestampExchange : {type : Number, default : 0},
-    lastBlockTimestampVault : {type : Number, default : 0},
     blockNumberExchange : Number,    
-    blockNumberVault : Number
+    blockNumberVault : Number,
+    pageNumberExchange : Number,
+    pageNumberVault : Number,
+    chainId : Number
    
 },
 { timestamps: true }

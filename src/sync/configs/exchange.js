@@ -11,7 +11,7 @@ const {handlePairCreated, handleOrderCreated, handleOrderExecuted, handleOrderUp
 
 
 const ExchangeConfig = {
-    contractAddress: tronWeb.address.fromHex(getExchangeAddress()),
+    contractAddress: getExchangeAddress(),
     abi: getExchangeABI(),
     handlers: {
         "PairCreated": handlePairCreated,

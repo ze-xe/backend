@@ -10,7 +10,8 @@ const OrderExecutedSchema = new mongoose.Schema({
     pair : String,
     exchangeRate : Number,
     exchangeRateDecimals : Number,
-    orderType: String
+    orderType: String,
+    chainId : Number
     
    
 },

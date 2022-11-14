@@ -1,138 +1,148 @@
 const axios = require("axios");
 const { Sync } = require("../db");
+const ethers = require('ethers');
+const { connect } = require('../db');
+require("dotenv").config()
 
 
 
+// const iface = new ethers.utils.Interface(abi)
 
 
+function decode_log_data(data, topics, iface) {
+    try {
+
+        const result = iface.parseLog({ data, topics });
+        return result;
+    }
+    catch (error) {
+        return
+    }
+};
 
 
-
-
-
-
-
-
-
-
-let lastTxnTimestamp;
-let lastBlockNumber;
-async function syncAndListen({ contractAddress, abi, handlers }) {
-
+let pageNumberExchange;
+async function syncAndListen({ contractAddress, abi, handlers }, chainId) {
 
 
     let syncDetails = await Sync.findOne();
 
     if (!syncDetails) {
-        await Sync.create({ lastBlockTimestampExchange: 0 });
-        lastTxnTimestamp = 0;
+        await Sync.create({ pageNumberExchange: 0, chainId: chainId });
+        pageNumberExchange = 0;
 
     } else {
-        lastTxnTimestamp = syncDetails.lastBlockTimestampExchange;
+        pageNumberExchange = syncDetails.pageNumberExchange ?? 0;
     }
 
-
-    let reqUrl = `https://nile.trongrid.io/v1/contracts/${contractAddress}/events?order_by=block_timestamp,asc&limit=50&only_confirmed=false&min_block_timestamp=${lastTxnTimestamp}`;
-    let isLastPage;
+    let reqUrl = `https://api.covalenthq.com/v1/${chainId}/address/${contractAddress}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number=${pageNumberExchange}&page-size=50&key=${process.env.AURORA_API_KEY}`
+    let isLastPage = false;
+    let errorCount = 0;
 
 
     sync();
 
     async function sync() {
         try {
-
-
+           
             let resp = await axios.get(reqUrl);
+            let data = resp.data.data;
 
-            if (resp.data.meta.links) {
-                reqUrl = resp.data.meta.links.next
-                isLastPage = false
-            } else {
+            if (data.pagination.has_more == false) {
+                pageNumberExchange = Number(data.pagination.page_number);
                 isLastPage = true;
+            } else {
+
+                reqUrl = `https://api.covalenthq.com/v1/${chainId}/address/${contractAddress}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number=${pageNumberExchange}&page-size=50&key=${process.env.AURORA_API_KEY}`
+                pageNumberExchange = Number(data.pagination.page_number) + 1;
+
             }
+           
+            const iface = new ethers.utils.Interface(abi);
 
-            let data = resp.data.data
+            if (data.items.length > 0) {
 
-            if (data) {
+                for (let i = 0; i < data.items.length; i++) {
 
-                for (let i in data) {
+                    let txnId = data.items[i].tx_hash;
+                    let blockTimestamp = data.items[i].block_signed_at;
+                    let blockNumber = data.items[i].block_height;
+                    let logEvents = data.items[i].log_events;
 
-                    let res = data[i].result;
-                    let arr = Object.keys(res);
-                    let len = Object.keys(res).length;
-                    let args = [];
-                    for (let i = 0; i < len / 2; i++) {
-                        args.push(res[`${arr[i]}`])
-                    };
+                    if (logEvents.length > 0) {
 
-                    data[i].args = args;
+                        for (let j = 0; j < logEvents.length; j++) {
+                            lastTxnTimestamp = blockTimestamp;
+                            const rawLogTopics = logEvents[j].raw_log_topics;
+                            const rawLogData = logEvents[j].raw_log_data;
+                            const address = logEvents[j].sender_address;
 
-                    let arguments = {
-                        txnId: data[i].transaction_id,
-                        blockTimestamp: data[i].block_timestamp,
-                        blockNumber: data[i].block_number,
-                        index: data[i].event_index,
-                        address: data[i].contract_address,
-                        from: 0
+                            let arguments = {
+                                txnId: txnId,
+                                blockTimestamp: blockTimestamp,
+                                blockNumber: blockNumber,
+                                address: address,
+                                chainId: chainId
+                            }
 
+                            const decoded_data = await decode_log_data(rawLogData, rawLogTopics, iface);
+
+                            if (decoded_data && decoded_data.args != undefined) {
+
+                                // console.log("Event", decoded_data.args) 
+                                if (handlers[decoded_data["name"]]) {
+                                    await handlers[decoded_data["name"]](decoded_data.args, arguments)
+                                }
+                            }
+                        }
                     }
-                    lastTxnTimestamp = data[i].block_timestamp;
-                    lastBlockNumber = data[i].block_number
-                    // console.log(data[i]["event_name"], data[i])
-                    if (handlers[data[i]["event_name"]] && data[i].result != undefined) {
-
-                        await handlers[data[i]["event_name"]](data[i].args, arguments)
-                    }
-
                 }
-
-
             }
 
-            if (isLastPage === false) {
-                sync()
+            if (isLastPage == false) {
+                sync();
                 return
             }
-            else if (isLastPage === true) {
-
-
-                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
-                syncAndListen({ contractAddress, abi, handlers });
-
+            else if (isLastPage == true) {
+                await Sync.findOneAndUpdate({}, { $set: { pageNumberExchange: pageNumberExchange } });
+                syncAndListen({ contractAddress, abi, handlers }, chainId);
                 return
 
             }
-
         }
         catch (error) {
-
-            await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampExchange: lastTxnTimestamp, blockNumberExchange: lastBlockNumber } })
-            syncAndListen({ contractAddress, abi, handlers });
-
-            return
+            if (errorCount < 5) {
+                syncAndListen({ contractAddress, abi, handlers }, chainId);
+                return
+            }
+            else {
+                await Sync.findOneAndUpdate({}, { $set: { pageNumberExchange: pageNumberExchange } })
+                console.log(`error`, error.message, error);
+            }
 
         }
     }
-}
+};
 
 
-let _lastTxnTimestamp;
-let _lastBlockNumber;
-async function _syncAndListen({ contractAddress, abi, handlers }) {
 
-   
+let pageNumberVault;
+async function syncAndListen1({ contractAddress, abi, handlers }, chainId) {
+
+    
     let syncDetails = await Sync.findOne();
 
     if (!syncDetails) {
-        await Sync.create({ lastBlockTimestampVault: 0 });
-        _lastTxnTimestamp = 0;
+        await Sync.create({ pageNumberVault: 0, chainId: chainId });
+        pageNumberVault = 0;
 
     } else {
-        _lastTxnTimestamp = syncDetails.lastBlockTimestampVault;
+        pageNumberVault = syncDetails.pageNumberVault ?? 0;
     }
 
-    let reqUrl = `https://nile.trongrid.io/v1/contracts/${contractAddress}/events?order_by=block_timestamp,asc&limit=50&only_confirmed=false&min_block_timestamp=${lastTxnTimestamp}`;
-    let isLastPage;
+    let reqUrl = `https://api.covalenthq.com/v1/${chainId}/address/${contractAddress}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number=${pageNumberVault}&page-size=50&key=ckey_fe0490001dc04de2854e3c23e63`
+    let isLastPage = false;
+    let errorCount = 0;
 
 
     sync1();
@@ -140,79 +150,101 @@ async function _syncAndListen({ contractAddress, abi, handlers }) {
     async function sync1() {
         try {
 
-
             let resp = await axios.get(reqUrl);
+            let data = resp.data.data;
 
-            if (resp.data.meta.links) {
-                reqUrl = resp.data.meta.links.next
-                isLastPage = false
-            } else {
+            if (data.pagination.has_more == false) {
+                pageNumberVault = Number(data.pagination.page_number);
                 isLastPage = true;
+            } else {
+
+                reqUrl = `https://api.covalenthq.com/v1/${chainId}/address/${contractAddress}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number=${pageNumberVault}&page-size=50&key=ckey_fe0490001dc04de2854e3c23e63`
+                pageNumberVault = Number(data.pagination.page_number) + 1;
+
             }
 
-            let data = resp.data.data
+            const iface = new ethers.utils.Interface(abi);
 
-            if (data) {
+            if (data.items.length > 0) {
 
-                for (let i in data) {
+                for (let i = 0; i < data.items.length; i++) {
 
-                    let res = data[i].result;
-                    let arr = Object.keys(res);
-                    let len = Object.keys(res).length;
-                    let args = [];
-                    for (let i = 0; i < len / 2; i++) {
-                        args.push(res[`${arr[i]}`])
-                    };
+                    let txnId = data.items[i].tx_hash;
+                    let blockTimestamp = data.items[i].block_signed_at;
+                    let blockNumber = data.items[i].block_height;
+                    let logEvents = data.items[i].log_events;
 
-                    data[i].args = args;
+                    if (logEvents.length > 0) {
 
-                    let arguments = {
-                        txnId: data[i].transaction_id,
-                        blockTimestamp: data[i].block_timestamp,
-                        blockNumber: data[i].block_number,
-                        index: data[i].event_index,
-                        address: data[i].contract_address,
-                        from: 0
+                        for (let j = 0; j < logEvents.length; j++) {
+                            lastTxnTimestamp = blockTimestamp;
+                            const rawLogTopics = logEvents[j].raw_log_topics;
+                            const rawLogData = logEvents[j].raw_log_data;
+                            const address = logEvents[j].sender_address;
 
+                            let arguments = {
+                                txnId: txnId,
+                                blockTimestamp: blockTimestamp,
+                                blockNumber: blockNumber,
+                                address: address,
+                                chainId: chainId
+                            }
+
+                            const decoded_data = await decode_log_data(rawLogData, rawLogTopics, iface);
+
+                            if (decoded_data && decoded_data.args != undefined) {
+
+                                console.log("Event", decoded_data.args) 
+                                if (handlers[decoded_data["name"]]) {
+                                    await handlers[decoded_data["name"]](decoded_data.args, arguments)
+                                }
+                            }
+                        }
                     }
-                    _lastTxnTimestamp = data[i].block_timestamp;
-                    _lastBlockNumber = data[i].block_number
-                    // console.log(data[i]["event_name"], data[i])
-                    if (handlers[data[i]["event_name"]] && data[i].result != undefined) {
-
-                        await handlers[data[i]["event_name"]](data[i].args, arguments)
-                    }
-
                 }
-                
-
             }
 
-            if (isLastPage === false) {
-                sync1()
+            if (isLastPage == false) {
+                sync1();
                 return
             }
-            else if (isLastPage === true) {
-
-                await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
-                _syncAndListen({ contractAddress, abi, handlers });
-
+            else if (isLastPage == true) {
+                await Sync.findOneAndUpdate({}, { $set: { pageNumberVault: pageNumberVault } });
+                syncAndListen1({ contractAddress, abi, handlers }, chainId);
                 return
-        
-            }
 
+            }
         }
         catch (error) {
-
-            await Sync.findOneAndUpdate({}, { $set: { lastBlockTimestampVault: _lastTxnTimestamp, blockNumberVault: _lastBlockNumber } })
-            _syncAndListen({ contractAddress, abi, handlers });
-
-            return
+            if (errorCount < 5) {
+                syncAndListen1({ contractAddress, abi, handlers }, chainId);
+                return
+            }
+            else {
+                await Sync.findOneAndUpdate({}, { $set: { pageNumberVault: pageNumberVault } })
+                console.log(`error`, error.message, error);
+            }
 
         }
     }
-}
+};
 
 
 
-module.exports = { syncAndListen, _syncAndListen }
+// syncAndListen({
+//     contractAddress: "0x047d17892cd3D3226C455B12E5edef7d75b3E50D",
+//     abi: getExchangeABI(),
+//     handlers: {
+//         "PairCreated": handlePairCreated,
+//         "OrderCreated": handleOrderCreated,
+//         "OrderExecuted": handleOrderExecuted,
+//         "OrderUpdated": handleOrderUpdated
+//     }
+// }, "1313161555");
+
+
+module.exports = { syncAndListen, syncAndListen1 }
+
+
+
+// module.exports = { syncAndListen }
